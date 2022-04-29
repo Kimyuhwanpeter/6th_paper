@@ -1,20 +1,22 @@
 # -*- coding:utf-8 -*-
+from Cal_measurement import *
 from model_ import *
+from random import shuffle, random
 
 import matplotlib.pyplot as plt
 import numpy as np
 import easydict
 import os
 
-FLAGS = easydict.EasyDict({"img_size": 1024,
+FLAGS = easydict.EasyDict({"img_size": 512,
 
-                           "train_txt_path": "D:/[1]DB/[5]4th_paper_DB\Fruit/apple_pear/train.txt",
+                           "train_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/train.txt",
 
-                           "test_txt_path": "D:/[1]DB/[5]4th_paper_DB\Fruit/apple_pear/test.txt",
+                           "test_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/test.txt",
                            
-                           "label_path": "D:/[1]DB/[5]4th_paper_DB\Fruit/apple_pear/FlowerLabels_temp/",
+                           "label_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerLabels_temp/",
                            
-                           "image_path": "D:/[1]DB/[5]4th_paper_DB\Fruit/apple_pear/FlowerImages/",
+                           "image_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerImages/",
                            
                            "pre_checkpoint": False,
                            
@@ -255,7 +257,7 @@ def cal_loss(model,
             object_buf_4,
             object_buf):
 
-    with tf.GradientTape(persistent=True) as tape2:
+    with tf.GradientTape() as tape2:
 
         labels_1 = tf.reshape(batch_labels_1, [-1,])
         labels_2 = tf.reshape(batch_labels_2, [-1,])
@@ -269,41 +271,116 @@ def cal_loss(model,
         logits_4 = tf.reshape(logits_4, [-1, 2])
         logits = tf.reshape(logits, [-1, 2])
 
-        # 일단 focal loss만 사용해보자 각 패치에 대한 object 개수 조건문은 내일 달아주고!!! 지금은 일단 러프하게코딩
-        patch_1_loss = categorical_focal_loss(alpha=[object_buf_1[0], object_buf_1[1]])(tf.one_hot(labels_1, 2), 
-                                                                                    tf.nn.softmax(logits_1, -1))
-        patch_2_loss = categorical_focal_loss(alpha=[object_buf_2[0], object_buf_2[1]])(tf.one_hot(labels_2, 2), 
-                                                                                    tf.nn.softmax(logits_2, -1))
-        patch_3_loss = categorical_focal_loss(alpha=[object_buf_3[0], object_buf_3[1]])(tf.one_hot(labels_3, 2), 
-                                                                                    tf.nn.softmax(logits_3, -1))
-        patch_4_loss = categorical_focal_loss(alpha=[object_buf_4[0], object_buf_4[1]])(tf.one_hot(labels_4, 2), 
-                                                                                    tf.nn.softmax(logits_4, -1))
-        all_loss = categorical_focal_loss(alpha=[object_buf[0], object_buf[1]])(tf.one_hot(labels, 2), 
-                                                                            tf.nn.softmax(logits, -1))
+        #patch_1_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_1, logits_1)
+        #patch_2_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_2, logits_2)
+        #patch_3_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_3, logits_3)
+        #patch_4_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_4, logits_4)
+        #all_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels, logits)
 
-        all_dice_loss = object_buf[1]*true_dice_loss(labels, logits[:, 1]) + object_buf[0]*false_dice_loss(labels, logits[:, 0])
-        patch_1_dice_loss = object_buf_1[1]*true_dice_loss(labels_1, logits_1[:, 1]) + object_buf_1[0]*false_dice_loss(labels_1, logits_1[:, 0])
-        patch_2_dice_loss = object_buf_2[1]*true_dice_loss(labels_2, logits_2[:, 1]) + object_buf_2[0]*false_dice_loss(labels_2, logits_2[:, 0])
-        patch_3_dice_loss = object_buf_3[1]*true_dice_loss(labels_3, logits_3[:, 1]) + object_buf_3[0]*false_dice_loss(labels_3, logits_3[:, 0])
-        patch_4_dice_loss = object_buf_4[1]*true_dice_loss(labels_4, logits_4[:, 1]) + object_buf_4[0]*false_dice_loss(labels_4, logits_4[:, 0])
+        #all_dice_loss = object_buf[1]*true_dice_loss(labels, logits[:, 1]) + object_buf[0]*false_dice_loss(labels, logits[:, 0])
+        #patch_1_dice_loss = object_buf_1[1]*true_dice_loss(labels_1, logits_1[:, 1]) + object_buf_1[0]*false_dice_loss(labels_1, logits_1[:, 0])
+        #patch_2_dice_loss = object_buf_2[1]*true_dice_loss(labels_2, logits_2[:, 1]) + object_buf_2[0]*false_dice_loss(labels_2, logits_2[:, 0])
+        #patch_3_dice_loss = object_buf_3[1]*true_dice_loss(labels_3, logits_3[:, 1]) + object_buf_3[0]*false_dice_loss(labels_3, logits_3[:, 0])
+        #patch_4_dice_loss = object_buf_4[1]*true_dice_loss(labels_4, logits_4[:, 1]) + object_buf_4[0]*false_dice_loss(labels_4, logits_4[:, 0])
 
-        strong_loss = all_loss + all_dice_loss
-        weak_1_loss = patch_1_dice_loss + patch_1_loss
-        weak_2_loss = patch_2_dice_loss + patch_2_loss
-        weak_3_loss = patch_3_dice_loss + patch_3_loss
-        weak_4_loss = patch_4_dice_loss + patch_4_loss
+        #strong_loss = all_loss + all_dice_loss
+        #weak_1_loss = patch_1_dice_loss + patch_1_loss
+        #weak_2_loss = patch_2_dice_loss + patch_2_loss
+        #weak_3_loss = patch_3_dice_loss + patch_3_loss
+        #weak_4_loss = patch_4_dice_loss + patch_4_loss
 
-    grads_weak_1 = tape2.gradient(weak_1_loss, model.trainable_variables)
-    grads_weak_2 = tape2.gradient(weak_2_loss, model.trainable_variables)
-    grads_weak_3 = tape2.gradient(weak_3_loss, model.trainable_variables)
-    grads_weak_4 = tape2.gradient(weak_4_loss, model.trainable_variables)
-    grads_strong = tape2.gradient(strong_loss, model.trainable_variables)
+        patch_1_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_1, logits_1)
+        patch_2_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_2, logits_2)
+        patch_3_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_3, logits_3)
+        patch_4_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_4, logits_4)
+        all_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels, logits)
 
-    optim.apply_gradients(zip(grads_weak_1, model.trainable_variables))
-    optim.apply_gradients(zip(grads_weak_2, model.trainable_variables))
-    optim.apply_gradients(zip(grads_weak_3, model.trainable_variables))
-    optim.apply_gradients(zip(grads_weak_4, model.trainable_variables))
-    optim.apply_gradients(zip(grads_strong, model.trainable_variables))
+
+        labels_back_indices = tf.squeeze(tf.where(labels == 0), -1)
+        labels_background = tf.gather(labels, labels_back_indices)
+        logits_background = tf.gather(logits[:, 0], labels_back_indices)
+        labels_background = tf.where(labels_background == 0, 1, labels_background)
+        labels_object_indices = tf.squeeze(tf.where(labels == 1), -1)
+        labels_object = tf.gather(labels, labels_object_indices)
+        logits_object = tf.gather(logits[:, 1], labels_object_indices)
+        if len(labels_background) == 0:
+            all_sigle_plane_loss = object_buf[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_object, logits_object)
+        elif len(labels_object) == 0:
+            all_sigle_plane_loss = object_buf[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_background, logits_background)
+        elif len(labels_background) != 0 and len(labels_object):
+            all_sigle_plane_loss = object_buf[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_background, logits_background) \
+                + object_buf[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_object, logits_object)
+
+        labels_1_back_indices = tf.squeeze(tf.where(labels_1 == 0), -1)
+        labels_1_background = tf.gather(labels_1, labels_1_back_indices)
+        logits_1_background = tf.gather(logits_1[:, 0], labels_1_back_indices)
+        labels_1_background = tf.where(labels_1_background == 0, 1, labels_1_background)
+        labels_1_object_indices = tf.squeeze(tf.where(labels_1 == 1), -1)
+        labels_1_object = tf.gather(labels_1, labels_1_object_indices)
+        logits_1_object = tf.gather(logits_1[:, 1], labels_1_object_indices)
+        if len(labels_1_background) == 0:
+            patch_1_plane_loss = object_buf_1[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_1_object, logits_1_object)
+        elif len(labels_1_object) == 0:
+            patch_1_plane_loss = object_buf_1[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_1_background, logits_1_background)
+        elif len(labels_1_background) != 0 and len(labels_1_object):
+            patch_1_plane_loss = object_buf_1[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_1_background, logits_1_background) \
+            + object_buf_1[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_1_object, logits_1_object)
+
+        labels_2_back_indices = tf.squeeze(tf.where(labels_2 == 0), -1)
+        labels_2_background = tf.gather(labels_2, labels_2_back_indices)
+        logits_2_background = tf.gather(logits_2[:, 0], labels_2_back_indices)
+        labels_2_background = tf.where(labels_2_background == 0, 1, labels_2_background)
+        labels_2_object_indices = tf.squeeze(tf.where(labels_2 == 1), -1)
+        labels_2_object = tf.gather(labels_2, labels_2_object_indices)
+        logits_2_object = tf.gather(logits_2[:, 1], labels_2_object_indices)
+        if len(labels_2_background == 0):
+            patch_2_plane_loss = object_buf_2[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_2_object, logits_2_object)
+        elif len(labels_2_object) == 0:
+            patch_2_plane_loss = object_buf_2[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_2_background, logits_2_background)
+        elif len(labels_2_background) != 0 and len(labels_2_object):
+            patch_2_plane_loss = object_buf_2[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_2_background, logits_2_background) \
+            + object_buf_2[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_2_object, logits_2_object)
+
+        labels_3_back_indices = tf.squeeze(tf.where(labels_3 == 0), -1)
+        labels_3_background = tf.gather(labels_3, labels_3_back_indices)
+        logits_3_background = tf.gather(logits_3[:, 0], labels_3_back_indices)
+        labels_3_background = tf.where(labels_3_background == 0, 1, labels_3_background)
+        labels_3_object_indices = tf.squeeze(tf.where(labels_3 == 1), -1)
+        labels_3_object = tf.gather(labels_3, labels_3_object_indices)
+        logits_3_object = tf.gather(logits_3[:, 1], labels_3_object_indices)
+        if len(labels_3_background == 0):
+            patch_3_plane_loss = object_buf_3[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_3_object, logits_3_object)
+        elif len(labels_3_object) == 0:
+            patch_3_plane_loss = object_buf_3[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_3_background, logits_3_background)
+        elif len(labels_3_background) != 0 and len(labels_3_object):
+            patch_3_plane_loss = object_buf_3[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_3_background, logits_3_background) \
+            + object_buf_3[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_3_object, logits_3_object)
+
+        labels_4_back_indices = tf.squeeze(tf.where(labels_4 == 0), -1)
+        labels_4_background = tf.gather(labels_4, labels_4_back_indices)
+        logits_4_background = tf.gather(logits_4[:, 0], labels_4_back_indices)
+        logits_4_background = tf.where(logits_4_background == 0, 1, logits_4_background)
+        labels_4_object_indices = tf.squeeze(tf.where(labels_4 == 1), -1)
+        labels_4_object = tf.gather(labels_4, labels_4_object_indices)
+        logits_4_object = tf.gather(logits_4[:, 1], labels_4_object_indices)
+        if len(labels_4_background) == 0:
+            patch_4_plane_loss = object_buf_4[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_4_object, logits_4_object)
+        elif len(labels_4_object) == 0:
+            patch_4_plane_loss = object_buf_4[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_4_background, logits_4_background)
+        elif len(labels_4_background) != 0 and len(labels_4_object):
+            patch_4_plane_loss = object_buf_4[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_4_background, logits_4_background) \
+            + object_buf_4[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_4_object, logits_4_object)
+
+        weak_1_loss = patch_1_loss + patch_1_plane_loss
+        weak_2_loss = patch_2_loss + patch_2_plane_loss
+        weak_3_loss = patch_3_loss + patch_3_plane_loss
+        weak_4_loss = patch_4_loss + patch_4_plane_loss
+        strong_loss = patch_1_loss + patch_1_plane_loss
+
+        total_loss = weak_1_loss + weak_2_loss + weak_3_loss + weak_4_loss + strong_loss
+
+    grads = tape2.gradient(total_loss, model.trainable_variables)
+    optim.apply_gradients(zip(grads, model.trainable_variables))
 
     return total_loss
 
@@ -358,15 +435,15 @@ def main():
             for step in range(tr_idx):
                 batch_images, print_images, batch_labels = next(tr_iter)
 
-                batch_images_1 = batch_images[:, 0:512, 0:512, :]   # batch_images_left_top
-                batch_images_2 = batch_images[:, 0:512, 512:, :]   # batch_images_right_top
-                batch_images_3 = batch_images[:, 512:, 0:512, :]   # batch_images_left_down
-                batch_images_4 = batch_images[:, 512:, 512:, :]   # batch_images_right_down
+                batch_images_1 = batch_images[:, 0:FLAGS.img_size // 2, 0:FLAGS.img_size // 2, :]   # batch_images_left_top
+                batch_images_2 = batch_images[:, 0:FLAGS.img_size // 2, FLAGS.img_size // 2:, :]   # batch_images_right_top
+                batch_images_3 = batch_images[:, FLAGS.img_size // 2:, 0:FLAGS.img_size // 2, :]   # batch_images_left_down
+                batch_images_4 = batch_images[:, FLAGS.img_size // 2:, FLAGS.img_size // 2:, :]   # batch_images_right_down
 
-                batch_labels_1 = batch_labels[:, 0:512, 0:512, :]   # batch_labels_left_top
-                batch_labels_2 = batch_labels[:, 0:512, 512:, :]   # batch_labels_right_top
-                batch_labels_3 = batch_labels[:, 512:, 0:512, :]   # batch_labels_left_down
-                batch_labels_4 = batch_labels[:, 512:, 512:, :]   # batch_labels_right_down
+                batch_labels_1 = batch_labels[:, 0:FLAGS.img_size // 2, 0:FLAGS.img_size // 2, :]   # batch_labels_left_top
+                batch_labels_2 = batch_labels[:, 0:FLAGS.img_size // 2, FLAGS.img_size // 2:, :]   # batch_labels_right_top
+                batch_labels_3 = batch_labels[:, FLAGS.img_size // 2:, 0:FLAGS.img_size // 2, :]   # batch_labels_left_down
+                batch_labels_4 = batch_labels[:, FLAGS.img_size // 2:, FLAGS.img_size // 2:, :]   # batch_labels_right_down
 
                 batch_labels_1 = batch_labels_1.numpy()
                 batch_labels_1 = np.where(batch_labels_1 == 255, 1, 0)
@@ -474,6 +551,134 @@ def main():
                     print("Epochs: {}, Loss = {} [{}/{}]".format(epoch, loss, step + 1, tr_idx))
 
 
+                if count % 100 == 0:
+                    _, _, _, _, logits = run_model(model, [batch_images_1, batch_images_2, batch_images_3, batch_images_4, batch_images], False)
+                    for j in range(FLAGS.batch_size):
+                        label = tf.cast(batch_labels[j, :, :, 0], tf.int32).numpy()
+                        object_output = tf.nn.softmax(logits[j], -1)
+                        object_output = tf.argmax(object_output, -1)
+                        object_output = tf.cast(object_output, tf.int32).numpy()
+
+                        pred_mask_color = color_map[object_output]
+                        label_mask_color = color_map[label]
+
+                        plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, i) + "_label.png", label_mask_color)
+                        plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, i) + "_predict.png", pred_mask_color)
+
+
+                count += 1
+
+            tr_iter = iter(train_ge)
+            iou = 0.
+            cm = 0.
+            f1_score_ = 0.
+            recall_ = 0.
+            precision_ = 0.
+            for i in range(tr_idx):
+                batch_images, _, batch_labels = next(tr_iter)
+                for j in range(FLAGS.batch_size):
+                    batch_image = tf.expand_dims(batch_images[j], 0)
+                    batch_image_1 = batch_image[:, 0:FLAGS.img_size // 2, 0:FLAGS.img_size // 2, :]   # batch_images_left_top
+                    batch_image_2 = batch_image[:, 0:FLAGS.img_size // 2, FLAGS.img_size // 2:, :]   # batch_images_right_top
+                    batch_image_3 = batch_image[:, FLAGS.img_size // 2:, 0:FLAGS.img_size // 2, :]   # batch_images_left_down
+                    batch_image_4 = batch_image[:, FLAGS.img_size // 2:, FLAGS.img_size // 2:, :]   # batch_images_right_down
+
+                    _, _, _, _, logits = run_model(model, [batch_image_1, batch_image_2, batch_image_3, batch_image_4, batch_image], False)
+
+                    object_output = tf.nn.softmax(logits[0], -1)
+                    object_output = tf.argmax(object_output, -1)
+                    object_output = tf.cast(object_output, tf.int32).numpy()
+                    object_output = np.where(object_output == 1, 0, 1)
+
+                    batch_label = tf.cast(batch_labels[j, :, :, 0], tf.uint8).numpy()
+                    batch_label = np.where(batch_label == 0, 1, 0)
+                    batch_label = np.array(batch_label, np.int32)
+
+                    cm_ = Measurement(predict=object_output,
+                                        label=batch_label, 
+                                        shape=[FLAGS.img_size*FLAGS.img_size, ], 
+                                        total_classes=2).MIOU()
+                    
+                    cm += cm_
+
+                iou = cm[0,0]/(cm[0,0] + cm[0,1] + cm[1,0])
+                precision_ = cm[0,0] / (cm[0,0] + cm[1,0])
+                recall_ = cm[0,0] / (cm[0,0] + cm[0,1])
+                f1_score_ = (2*precision_*recall_) / (precision_ + recall_)
+            print("train mIoU = %.4f, train F1_score = %.4f, train sensitivity(recall) = %.4f, train precision = %.4f" % (iou,
+                                                                                                                        f1_score_,
+                                                                                                                        recall_,
+                                                                                                                        precision_))
+
+            output_text.write("Epoch: ")
+            output_text.write(str(epoch))
+            output_text.write("===================================================================")
+            output_text.write("\n")
+            output_text.write("train IoU: ")
+            output_text.write("%.4f" % (iou / len(train_img_dataset)))
+            output_text.write(", train F1_score: ")
+            output_text.write("%.4f" % (f1_score_))
+            output_text.write(", train sensitivity: ")
+            output_text.write("%.4f" % (recall_ / len(train_img_dataset)))
+            output_text.write(", train precision: ")
+            output_text.write("%.4f" % (precision_ / len(train_img_dataset)))
+            output_text.write("\n")
+
+            test_iter = iter(test_ge)
+            iou = 0.
+            cm = 0.
+            f1_score_ = 0.
+            recall_ = 0.
+            precision_ = 0.
+            for i in range(len(test_img_dataset)):
+                batch_images, batch_labels = next(test_iter)
+                for j in range(1):
+                    batch_image = tf.expand_dims(batch_images[j], 0)
+                    batch_image_1 = batch_image[:, 0:FLAGS.img_size // 2, 0:FLAGS.img_size // 2, :]   # batch_images_left_top
+                    batch_image_2 = batch_image[:, 0:FLAGS.img_size // 2, FLAGS.img_size // 2:, :]   # batch_images_right_top
+                    batch_image_3 = batch_image[:, FLAGS.img_size // 2:, 0:FLAGS.img_size // 2, :]   # batch_images_left_down
+                    batch_image_4 = batch_image[:, FLAGS.img_size // 2:, FLAGS.img_size // 2:, :]   # batch_images_right_down
+
+                    _, _, _, _, logits = run_model(model, [batch_image_1, batch_image_2, batch_image_3, batch_image_4, batch_image], False)
+
+                    object_output = tf.nn.softmax(logits[0], -1)
+                    object_output = tf.argmax(object_output, -1)
+                    object_output = tf.cast(object_output, tf.int32).numpy()
+                    object_output = np.where(object_output == 1, 0, 1)
+
+                    batch_label = tf.cast(batch_labels[j, :, :, 0], tf.uint8).numpy()
+                    batch_label = np.where(batch_label == 0, 1, 0)
+                    batch_label = np.array(batch_label, np.int32)
+
+                    cm_ = Measurement(predict=object_output,
+                                        label=batch_label, 
+                                        shape=[FLAGS.img_size*FLAGS.img_size, ], 
+                                        total_classes=2).MIOU()
+                    
+                    cm += cm_
+
+                iou = cm[0,0]/(cm[0,0] + cm[0,1] + cm[1,0])
+                precision_ = cm[0,0] / (cm[0,0] + cm[1,0])
+                recall_ = cm[0,0] / (cm[0,0] + cm[0,1])
+                f1_score_ = (2*precision_*recall_) / (precision_ + recall_)
+
+
+            print("test mIoU = %.4f, test F1_score = %.4f, test sensitivity(recall) = %.4f, test precision = %.4f" % (iou,
+                                                                                                                    f1_score_,
+                                                                                                                    recall_,
+                                                                                                                    precision_))
+            output_text.write("test IoU: ")
+            output_text.write("%.4f" % (iou / len(test_img_dataset)))
+            output_text.write(", test F1_score: ")
+            output_text.write("%.4f" % (f1_score_))
+            output_text.write(", test sensitivity: ")
+            output_text.write("%.4f" % (recall_ / len(test_img_dataset)))
+            output_text.write(", test precision: ")
+            output_text.write("%.4f" % (precision_ / len(test_img_dataset)))
+            output_text.write("\n")
+            output_text.write("===================================================================")
+            output_text.write("\n")
+            output_text.flush()
 
 
 if __name__ == "__main__":
