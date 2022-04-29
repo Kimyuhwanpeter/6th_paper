@@ -680,6 +680,13 @@ def main():
             output_text.write("\n")
             output_text.flush()
 
-
+            model_dir = "%s/%s" % (FLAGS.save_checkpoint, epoch)
+            if not os.path.isdir(model_dir):
+                print("Make {} folder to store the weight!".format(epoch))
+                os.makedirs(model_dir)
+            ckpt = tf.train.Checkpoint(model=model, optim=optim)
+            ckpt_dir = model_dir + "/apple_A_model_{}.ckpt".format(epoch)
+            ckpt.save(ckpt_dir)
+            
 if __name__ == "__main__":
     main()
