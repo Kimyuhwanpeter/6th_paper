@@ -375,7 +375,7 @@ def cal_loss(model,
         weak_2_loss = patch_2_loss + patch_2_plane_loss
         weak_3_loss = patch_3_loss + patch_3_plane_loss
         weak_4_loss = patch_4_loss + patch_4_plane_loss
-        strong_loss = patch_1_loss + patch_1_plane_loss
+        strong_loss = all_loss + all_sigle_plane_loss
 
         total_loss = weak_1_loss + weak_2_loss + weak_3_loss + weak_4_loss + strong_loss
 
