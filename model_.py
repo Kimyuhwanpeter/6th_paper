@@ -65,7 +65,7 @@ def patch_model(input_shape=(512, 512, 3), classes=2):
     #h_4 = h[:, 512:, 512:, :]   # h_right_down
 
     ################################################################################################
-    model_1 = tf.keras.applications.MobileNetV2(input_tensor=h_1, include_top=False)
+    model_1 = tf.keras.applications.MobileNetV2(input_shape=input_shape, input_tensor=h_1, include_top=False)
     h_1 = model_1.get_layer("block_16_project_BN").output
 
     h_1_a = ASPP(h_1, 256, "_1")
@@ -87,7 +87,7 @@ def patch_model(input_shape=(512, 512, 3), classes=2):
     ################################################################################################
 
     ################################################################################################
-    model_2 = tf.keras.applications.MobileNetV2(input_tensor=h_2, include_top=False)
+    model_2 = tf.keras.applications.MobileNetV2(input_shape=input_shape, input_tensor=h_2, include_top=False)
     for layer in model_2.layers:
         layer._name = layer.name + str("_2")
     h_2 = model_2.get_layer("block_16_project_BN_2").output
@@ -111,7 +111,7 @@ def patch_model(input_shape=(512, 512, 3), classes=2):
     ################################################################################################
 
     ################################################################################################
-    model_3 = tf.keras.applications.MobileNetV2(input_tensor=h_3, include_top=False)
+    model_3 = tf.keras.applications.MobileNetV2(input_shape=input_shape, input_tensor=h_3, include_top=False)
     for layer in model_3.layers:
         layer._name = layer.name + str("_3")
     h_3 = model_3.get_layer("block_16_project_BN_3").output
@@ -135,7 +135,7 @@ def patch_model(input_shape=(512, 512, 3), classes=2):
     ################################################################################################
 
     ################################################################################################
-    model_4 = tf.keras.applications.MobileNetV2(input_tensor=h_4, include_top=False)
+    model_4 = tf.keras.applications.MobileNetV2(input_shape=input_shape, input_tensor=h_4, include_top=False)
     for layer in model_4.layers:
         layer._name = layer.name + str("_4")
     h_4 = model_4.get_layer("block_16_project_BN_4").output
@@ -164,10 +164,8 @@ def patch_model(input_shape=(512, 512, 3), classes=2):
     h = tf.concat([h_1_2, h_3_4], 1)
     
 
-    return tf.keras.Model(inputs=[model_1.input, model_2.input, model_3.input, model_4.input], outputs=[h_1, h_2, h_3, h_4, h])
+    return tf.keras.Model(inputs=[inputs_1, inputs_2, inputs_3, inputs_4], outputs=[h_1, h_2, h_3, h_4, h])
 
-model = patch_model()
-model.summary()
 
 #img = tf.io.read_file("D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerLabels_temp/IMG_0248.JPG")
 #img = tf.image.decode_png(img, 1)
