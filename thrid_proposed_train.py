@@ -8,15 +8,15 @@ import numpy as np
 import easydict
 import os
 
-FLAGS = easydict.EasyDict({"img_size": 512,
+FLAGS = easydict.EasyDict({"img_size": 448,
 
-                           "train_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/train.txt",
+                           "train_txt_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/train.txt",
 
-                           "test_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/test.txt",
+                           "test_txt_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/test.txt",
                            
-                           "label_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerLabels_temp/",
+                           "label_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/FlowerLabels_temp/",
                            
-                           "image_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerImages/",
+                           "image_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/FlowerImages/",
                            
                            "pre_checkpoint": False,
                            
@@ -34,11 +34,11 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "batch_size": 2,
 
-                           "sample_images": "C:/Users/Yuhwan/Downloads/sample_images",
+                           "sample_images": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/6th_paper/proposed_method/Apple_A/sample_images",
 
-                           "save_checkpoint": "/content/drive/MyDrive/6th_paper/checkpoint",
+                           "save_checkpoint": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/6th_paper/proposed_method/Apple_A/checkpoint",
 
-                           "save_print": "C:/Users/Yuhwan/Downloads/train_out.txt",
+                           "save_print": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/6th_paper/proposed_method/Apple_A/train_out.txt",
 
                            "train_loss_graphs": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/V2/BoniRob/train_loss.txt",
 
@@ -236,7 +236,7 @@ def binary_focal_loss(gamma=2., alpha=.25):
 
     return binary_focal_loss_fixed
 
-#@tf.function
+# @tf.function
 def run_model(model, images, training=True):
     return model(images, training=training)
 
@@ -552,7 +552,7 @@ def main():
 
 
                 if count % 100 == 0:
-                    _, _, _, _, logits = run_model(model, [batch_images_1, batch_images_2, batch_images_3, batch_images_4, batch_images], False)
+                    _, _, _, _, logits = run_model(model, [batch_images_1, batch_images_2, batch_images_3, batch_images_4], False)
                     for j in range(FLAGS.batch_size):
                         label = tf.cast(batch_labels[j, :, :, 0], tf.int32).numpy()
                         object_output = tf.nn.softmax(logits[j], -1)
@@ -562,8 +562,8 @@ def main():
                         pred_mask_color = color_map[object_output]
                         label_mask_color = color_map[label]
 
-                        plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, i) + "_label.png", label_mask_color)
-                        plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, i) + "_predict.png", pred_mask_color)
+                        plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, j) + "_label.png", label_mask_color)
+                        plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, j) + "_predict.png", pred_mask_color)
 
 
                 count += 1
@@ -583,7 +583,7 @@ def main():
                     batch_image_3 = batch_image[:, FLAGS.img_size // 2:, 0:FLAGS.img_size // 2, :]   # batch_images_left_down
                     batch_image_4 = batch_image[:, FLAGS.img_size // 2:, FLAGS.img_size // 2:, :]   # batch_images_right_down
 
-                    _, _, _, _, logits = run_model(model, [batch_image_1, batch_image_2, batch_image_3, batch_image_4, batch_image], False)
+                    _, _, _, _, logits = run_model(model, [batch_image_1, batch_image_2, batch_image_3, batch_image_4], False)
 
                     object_output = tf.nn.softmax(logits[0], -1)
                     object_output = tf.argmax(object_output, -1)
@@ -639,7 +639,7 @@ def main():
                     batch_image_3 = batch_image[:, FLAGS.img_size // 2:, 0:FLAGS.img_size // 2, :]   # batch_images_left_down
                     batch_image_4 = batch_image[:, FLAGS.img_size // 2:, FLAGS.img_size // 2:, :]   # batch_images_right_down
 
-                    _, _, _, _, logits = run_model(model, [batch_image_1, batch_image_2, batch_image_3, batch_image_4, batch_image], False)
+                    _, _, _, _, logits = run_model(model, [batch_image_1, batch_image_2, batch_image_3, batch_image_4], False)
 
                     object_output = tf.nn.softmax(logits[0], -1)
                     object_output = tf.argmax(object_output, -1)
@@ -687,6 +687,7 @@ def main():
             ckpt = tf.train.Checkpoint(model=model, optim=optim)
             ckpt_dir = model_dir + "/apple_A_model_{}.ckpt".format(epoch)
             ckpt.save(ckpt_dir)
-            
+
+
 if __name__ == "__main__":
     main()
