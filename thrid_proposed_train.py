@@ -293,23 +293,7 @@ def cal_loss(model,
         patch_2_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_2, logits_2)
         patch_3_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_3, logits_3)
         patch_4_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels_4, logits_4)
-        all_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels, logits)
-
-
-        labels_back_indices = tf.squeeze(tf.where(labels == 0), -1)
-        labels_background = tf.gather(labels, labels_back_indices)
-        logits_background = tf.gather(logits[:, 0], labels_back_indices)
-        labels_background = tf.where(labels_background == 0, 1, labels_background)
-        labels_object_indices = tf.squeeze(tf.where(labels == 1), -1)
-        labels_object = tf.gather(labels, labels_object_indices)
-        logits_object = tf.gather(logits[:, 1], labels_object_indices)
-        if len(labels_background) == 0:
-            all_sigle_plane_loss = object_buf[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_object, logits_object)
-        elif len(labels_object) == 0:
-            all_sigle_plane_loss = object_buf[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_background, logits_background)
-        elif len(labels_background) != 0 and len(labels_object):
-            all_sigle_plane_loss = object_buf[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_background, logits_background) \
-                + object_buf[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_object, logits_object)
+        # all_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(labels, logits)
 
         labels_1_back_indices = tf.squeeze(tf.where(labels_1 == 0), -1)
         labels_1_background = tf.gather(labels_1, labels_1_back_indices)
@@ -322,7 +306,7 @@ def cal_loss(model,
             patch_1_plane_loss = object_buf_1[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_1_object, logits_1_object)
         elif len(labels_1_object) == 0:
             patch_1_plane_loss = object_buf_1[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_1_background, logits_1_background)
-        elif len(labels_1_background) != 0 and len(labels_1_object):
+        elif len(labels_1_background) != 0 and len(labels_1_object) != 0:
             patch_1_plane_loss = object_buf_1[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_1_background, logits_1_background) \
             + object_buf_1[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_1_object, logits_1_object)
 
@@ -337,7 +321,7 @@ def cal_loss(model,
             patch_2_plane_loss = object_buf_2[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_2_object, logits_2_object)
         elif len(labels_2_object) == 0:
             patch_2_plane_loss = object_buf_2[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_2_background, logits_2_background)
-        elif len(labels_2_background) != 0 and len(labels_2_object):
+        elif len(labels_2_background) != 0 and len(labels_2_object) != 0:
             patch_2_plane_loss = object_buf_2[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_2_background, logits_2_background) \
             + object_buf_2[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_2_object, logits_2_object)
 
@@ -352,7 +336,7 @@ def cal_loss(model,
             patch_3_plane_loss = object_buf_3[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_3_object, logits_3_object)
         elif len(labels_3_object) == 0:
             patch_3_plane_loss = object_buf_3[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_3_background, logits_3_background)
-        elif len(labels_3_background) != 0 and len(labels_3_object):
+        elif len(labels_3_background) != 0 and len(labels_3_object) != 0:
             patch_3_plane_loss = object_buf_3[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_3_background, logits_3_background) \
             + object_buf_3[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_3_object, logits_3_object)
 
@@ -367,7 +351,7 @@ def cal_loss(model,
             patch_4_plane_loss = object_buf_4[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_4_object, logits_4_object)
         elif len(labels_4_object) == 0:
             patch_4_plane_loss = object_buf_4[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_4_background, logits_4_background)
-        elif len(labels_4_background) != 0 and len(labels_4_object):
+        elif len(labels_4_background) != 0 and len(labels_4_object) != 0:
             patch_4_plane_loss = object_buf_4[0]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_4_background, logits_4_background) \
             + object_buf_4[1]*tf.keras.losses.BinaryCrossentropy(from_logits=True)(labels_4_object, logits_4_object)
 
@@ -375,9 +359,8 @@ def cal_loss(model,
         weak_2_loss = patch_2_loss + patch_2_plane_loss
         weak_3_loss = patch_3_loss + patch_3_plane_loss
         weak_4_loss = patch_4_loss + patch_4_plane_loss
-        strong_loss = all_loss + all_sigle_plane_loss
 
-        total_loss = weak_1_loss + weak_2_loss + weak_3_loss + weak_4_loss + strong_loss
+        total_loss = weak_1_loss + weak_2_loss + weak_3_loss + weak_4_loss
 
     grads = tape2.gradient(total_loss, model.trainable_variables)
     optim.apply_gradients(zip(grads, model.trainable_variables))
@@ -615,13 +598,13 @@ def main():
             output_text.write("===================================================================")
             output_text.write("\n")
             output_text.write("train IoU: ")
-            output_text.write("%.4f" % (iou / len(train_img_dataset)))
+            output_text.write("%.4f" % (iou))
             output_text.write(", train F1_score: ")
             output_text.write("%.4f" % (f1_score_))
             output_text.write(", train sensitivity: ")
-            output_text.write("%.4f" % (recall_ / len(train_img_dataset)))
+            output_text.write("%.4f" % (recall_))
             output_text.write(", train precision: ")
-            output_text.write("%.4f" % (precision_ / len(train_img_dataset)))
+            output_text.write("%.4f" % (precision_))
             output_text.write("\n")
 
             test_iter = iter(test_ge)
@@ -668,13 +651,13 @@ def main():
                                                                                                                     recall_,
                                                                                                                     precision_))
             output_text.write("test IoU: ")
-            output_text.write("%.4f" % (iou / len(test_img_dataset)))
+            output_text.write("%.4f" % (iou))
             output_text.write(", test F1_score: ")
             output_text.write("%.4f" % (f1_score_))
             output_text.write(", test sensitivity: ")
-            output_text.write("%.4f" % (recall_ / len(test_img_dataset)))
+            output_text.write("%.4f" % (recall_))
             output_text.write(", test precision: ")
-            output_text.write("%.4f" % (precision_ / len(test_img_dataset)))
+            output_text.write("%.4f" % (precision_))
             output_text.write("\n")
             output_text.write("===================================================================")
             output_text.write("\n")
