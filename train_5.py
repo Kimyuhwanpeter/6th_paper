@@ -12,17 +12,17 @@ import os
 
 FLAGS = easydict.EasyDict({"img_size": 512,
 
-                           "train_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/train_fix.txt",
+                           "train_txt_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/train_fix.txt",
 
-                           "test_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/test.txt",
+                           "test_txt_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/test.txt",
                            
-                           "tr_label_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/split_A_labels_train/",
+                           "tr_label_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/split_A_labels_train/",
                            
-                           "tr_image_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/split_A_images_train/",
+                           "tr_image_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/split_A_images_train/",
 
-                           "te_label_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerLabels_test/",
+                           "te_label_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/FlowerLabels_test/",
                            
-                           "te_image_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/Flowerimages_test/",
+                           "te_image_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/Flowerimages_test/",
                            
                            "pre_checkpoint": False,
                            
@@ -38,13 +38,13 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "ignore_label": 0,
 
-                           "batch_size": 1,
+                           "batch_size": 3,
 
-                           "sample_images": "C:/Users/Yuhwan/Downloads/tt/sample_images",
+                           "sample_images": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/6th_paper/proposed_method/Apple_A/sample_images",
 
-                           "save_checkpoint": "C:/Users/Yuhwan/Downloads/tt",
+                           "save_checkpoint": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/6th_paper/proposed_method/Apple_A/checkpoint",
 
-                           "save_print": "C:/Users/Yuhwan/Downloads/train_out.txt",
+                           "save_print": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/6th_paper/proposed_method/Apple_A/train_out.txt",
 
                            "train_loss_graphs": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/V2/BoniRob/train_loss.txt",
 
@@ -279,24 +279,16 @@ def cal_loss(model, images, labels, object_buf):
         #         + tf.keras.losses.BinaryCrossentropy(from_logits=True)(non_object_labels,
         #                                                                only_back_logits)
         
-        labels_1_back_indices = tf.squeeze(tf.where(batch_labels == 0), -1)
-        labels_1_background = tf.gather(batch_labels, labels_1_back_indices)
-        logits_1_background = tf.gather(logits[:, 0], labels_1_back_indices)
-        labels_1_object_indices = tf.squeeze(tf.where(batch_labels == 1), -1)
-        labels_1_object = tf.gather(batch_labels, labels_1_object_indices)
-        logits_1_object = tf.gather(logits[:, 1], labels_1_object_indices)
 
-        loss_object_1 = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)(labels_1_object, logits_1_object)
-        loss_object_1 = tf.reduce_mean(loss_object_1)
+        reverse_batch_labels = tf.where(batch_labels == 0, 1, 0)    
+        # reverse_loss = binary_focal_loss(alpha=object_buf[0])(reverse_batch_labels, tf.nn.sigmoid(logits[:, 0]))    # for this, 0 is object; 1 is background
+        reverse_loss = true_dice_loss(reverse_batch_labels, logits[:, 0])    # for this, 0 is object; 1 is background
+        # forward_loss = binary_focal_loss(alpha=object_buf[1])(batch_labels, tf.nn.sigmoid(logits[:, 1]))    # for this, 1 is object; 0 is background
+        forward_loss = true_dice_loss(batch_labels, logits[:, 1])    # for this, 1 is object; 0 is background
+        combine_loss = categorical_focal_loss(alpha=[object_buf[0], object_buf[1]])(tf.one_hot(batch_labels, 2), tf.nn.softmax(logits, -1))
 
-        loss_object_2 = true_dice_loss(labels_1_object, logits_1_object)
 
-        loss_background_1 = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)(labels_1_background, logits_1_background)
-        loss_background_1 = tf.reduce_mean(loss_background_1)
-
-        loss_background_2 = false_dice_loss(labels_1_background, logits_1_background)
-
-        total_loss = object_buf[1]*loss_object_2 + object_buf[0]*loss_background_2
+        total_loss = reverse_loss + forward_loss + combine_loss
 
     grads2 = tape2.gradient(total_loss, model.trainable_variables)
     optim.apply_gradients(zip(grads2, model.trainable_variables))
@@ -309,7 +301,7 @@ def main():
     model.summary()
 
     if FLAGS.pre_checkpoint:
-        ckpt = tf.train.Checkpoint(model=model, model2=model2, optim=optim, optim2=optim2)
+        ckpt = tf.train.Checkpoint(model=model, optim=optim)
         ckpt_manger = tf.train.CheckpointManager(ckpt, FLAGS.pre_checkpoint_path, 5)
 
         if ckpt_manger.latest_checkpoint:
@@ -354,7 +346,7 @@ def main():
                 batch_images, print_images, batch_labels = next(tr_iter)
 
                 batch_labels = batch_labels.numpy()
-                batch_labels = np.where(batch_labels == 255, 1, 0)
+                batch_labels = np.where(batch_labels > 128, 1, 0)
 
                 class_imbal_labels_buf = 0.
                 class_imbal_labels = batch_labels
@@ -378,9 +370,7 @@ def main():
                     raw_logits = run_model(model, batch_images, False)
                     for i in range(FLAGS.batch_size):
                         label = tf.cast(batch_labels[i, :, :, 0], tf.int32).numpy()
-                        background_indices = tf.squeeze(tf.where(tf.nn.sigmoid(raw_logits[i, :, :, 0]) < 0.5), -1).numpy()
-                        object_logits = tf.where(tf.nn.sigmoid(raw_logits[i, :, :, 1]) > 0.5, 1, 0)
-                        object_logits[background_indices] = 0
+                        object_logits = tf.argmax(tf.nn.softmax(raw_logits[i], -1), -1, output_type=tf.int32).numpy()
 
                         pred_mask_color = color_map[object_logits]
                         label_mask_color = color_map[label]
@@ -402,12 +392,11 @@ def main():
                 for j in range(FLAGS.batch_size):
                     batch_image = tf.expand_dims(batch_images[j], 0)
                     raw_logits = run_model(model, batch_image, False)
-                    background_indices = tf.squeeze(tf.where(tf.nn.sigmoid(raw_logits[0, :, :, 0]) < 0.5), -1).numpy()
-                    object_logits = tf.where(tf.nn.sigmoid(raw_logits[0, :, :, 1]) > 0.5, 1, 0)
-                    object_logits[background_indices] = 0
-
+                    object_logits = tf.argmax(tf.nn.softmax(raw_logits, -1), -1, output_type=tf.int32).numpy()
+                    object_logits = np.where(object_logits == 1, 0, 1)
 
                     batch_label = tf.cast(batch_labels[j, :, :, 0], tf.uint8).numpy()
+                    batch_label = np.where(batch_label > 128, 1, 0)
                     batch_label = np.where(batch_label == 0, 1, 0)
                     batch_label = np.array(batch_label, np.int32)
 
@@ -452,11 +441,11 @@ def main():
                 for j in range(1):
                     batch_image = tf.expand_dims(batch_images[j], 0)
                     raw_logits = run_model(model, batch_image, False)
-                    background_indices = tf.squeeze(tf.where(tf.nn.sigmoid(raw_logits[0, :, :, 0]) < 0.5), -1).numpy()
-                    object_logits = tf.where(tf.nn.sigmoid(raw_logits[0, :, :, 1]) > 0.5, 1, 0)
-                    object_logits[background_indices] = 0
+                    object_logits = tf.argmax(tf.nn.softmax(raw_logits, -1), -1, output_type=tf.int32).numpy()
+                    object_logits = np.where(object_logits == 1, 0, 1)
 
                     batch_label = tf.cast(batch_labels[j, :, :, 0], tf.uint8).numpy()
+                    batch_label = np.where(batch_label > 128, 1, 0)
                     batch_label = np.where(batch_label == 0, 1, 0)
                     batch_label = np.array(batch_label, np.int32)
 
