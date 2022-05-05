@@ -109,6 +109,16 @@ def test_func(image_list, label_list):
 
     return img, lab
 
+def test_func2(img_list, lab_list):
+
+    img = tf.io.read_file(img_list)
+    img = tf.image.decode_jpeg(img, 3)
+
+    lab = tf.io.read_file(lab_list)
+    lab = tf.image.decode_jpeg(lab, 1)
+
+    return img, lab
+  
 def true_dice_loss(y_true, y_pred):
     y_true = tf.cast(y_true, tf.float32)
     y_pred = tf.math.sigmoid(y_pred)
