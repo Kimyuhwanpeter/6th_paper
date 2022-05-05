@@ -486,6 +486,119 @@ def main():
             ckpt = tf.train.Checkpoint(model=model, optim=optim)
             ckpt_dir = model_dir + "/apple_model_{}.ckpt".format(epoch)
             ckpt.save(ckpt_dir)
+    else:
+        test_list = np.loadtxt(FLAGS.test_txt_path, dtype="<U200", skiprows=0, usecols=0)
 
+        test_img_dataset = [FLAGS.te_image_path + data for data in test_list]
+        test_lab_dataset = [FLAGS.te_label_path + data for data in test_list]
+        test_img_dataset = np.array(test_img_dataset)
+        test_lab_dataset = np.array(test_lab_dataset)
+
+        te_gener = tf.data.Dataset.from_tensor_slices((test_img_dataset, test_lab_dataset))
+        te_gener = te_gener.map(test_func2)
+        te_gener = te_gener.batch(1)
+        te_gener = te_gener.prefetch(tf.data.experimental.AUTOTUNE)
+
+        tr_iter = iter(te_gener)
+        tr_idx = len(test_img_dataset) // 1
+        for i in range(tr_idx):
+            images, labels = next(tr_iter)
+            image = images[0].numpy()
+            label = labels[0].numpy()
+            shape = tf.keras.backend.int_shape(image)
+            height = shape[0]
+            width = shape[1]
+
+            desired_h = 1728    # Apple A
+            desired_w = 1728    # Apple A
+
+            if height == 3456 and width == 5184:    # Apple A
+                final_output = []
+                count = 0
+                for j in range(2):
+                    for k in range(3):
+                        count += 1;
+                        split_img = image[j*desired_h:(j+1)*desired_h, k*desired_w:(k+1)*desired_w, :]
+                        split_lab = label[j*desired_h:(j+1)*desired_h, k*desired_w:(k+1)*desired_w]
+                        split_lab = np.where(split_lab > 128, 255, 0)
+
+                        split_img = tf.expand_dims(split_img, 0)
+                        split_img = tf.image.resize(split_img, [FLAGS.img_size, FLAGS.img_size])
+                        output = run_model(model, split_img, False)
+                        
+                        output = tf.argmax(tf.nn.softmax(output[0], -1), -1, output_type=tf.int32)
+                        output = tf.image.resize(output[:, :, tf.newaxis], [1728, 1728], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR).numpy()
+                        output = output[:, :, 0]
+                        temp_image = tf.image.resize(split_img, [1728, 1728]).numpy()
+                        temp_image = temp_image[0]
+
+                        if j == 0 and k == 0:
+                            final_output = output
+                            final_image = temp_image
+                        else:
+                            if j == 0:
+                                final_output = tf.concat([final_output, output], 1)
+                                final_image = tf.concat([final_image, temp_image], 1)
+                            else:
+                                if j == 1 and k == 0:
+                                    final_output2 = output
+                                    final_image2 = temp_image
+                                else:
+                                    final_output2 = tf.concat([final_output2, output], 1)
+                                    final_image2 = tf.concat([final_image2, temp_image], 1)
+
+                final_image3 = tf.concat([final_image, final_image2], 0)
+                final_output3 = tf.concat([final_output, final_output2], 0)
+                final_output3 = color_map[final_output3]
+                
+                #plt.imsave("C:/Users/Yuhwan/Downloads/tt" + "/" + test_img_dataset[i].split("/")[-1], final_output3 / 255)
+               
+                        # 이제 여기서 붙여야함
+
+            if height == 5184 and width == 3456:    # Apple A
+                for j in range(3):
+                    for k in range(2):
+                        split_img = image[j*desired_h:(j+1)*desired_h, k*desired_w:(k+1)*desired_w, :]
+                        split_lab = label[j*desired_h:(j+1)*desired_h, k*desired_w:(k+1)*desired_w]
+                        split_lab = np.where(split_lab > 128, 255, 0)
+
+                        split_img = tf.expand_dims(split_img, 0)
+                        split_img = tf.image.resize(split_img, [FLAGS.img_size, FLAGS.img_size])
+                        output = run_model(model, split_img, False)
+                        
+                        output = tf.argmax(tf.nn.softmax(output[0], -1), -1, output_type=tf.int32)
+                        output = tf.image.resize(output[:, :, tf.newaxis], [1728, 1728], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR).numpy()
+                        output = output[:, :, 0]
+                        temp_image = tf.image.resize(split_img, [1728, 1728]).numpy()
+                        temp_image = temp_image[0]
+
+                        if j == 0 and k == 0:
+                            final_output = output
+                            final_image = temp_image
+                        else:
+                            if j == 0:
+                                final_output = tf.concat([final_output, output], 1)
+                                final_image = tf.concat([final_image, temp_image], 1)
+                            else:
+                                if j == 1 and k == 0:
+                                    final_output2 = output
+                                    final_image2 = temp_image
+                                else:
+                                    if j == 1:
+                                        final_output2 = tf.concat([final_output2, output], 1)
+                                        final_image2 = tf.concat([final_image2, temp_image], 1)
+                                    else:
+                                        if j == 1 and k == 0:
+                                            final_output3 = output
+                                            final_image3 = temp_image
+                                        else:
+                                            final_output3 = tf.concat([final_output3, output], 1)
+                                            final_image3 = tf.concat([final_image3, temp_image], 1)
+
+                final_image4 = tf.concat([final_image, final_image2, final_image3], 0)
+                final_output4 = tf.concat([final_output, final_output2, final_output3], 0)
+                final_output4 = color_map[final_output4]
+                #plt.imsave("C:/Users/Yuhwan/Downloads/tt" + "/" + test_img_dataset[i].split("/")[-1], final_output4 / 255)
+                
 if __name__ == "__main__":
     main()
