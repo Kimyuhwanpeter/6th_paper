@@ -391,55 +391,6 @@ def main():
 
                 count += 1
 
-            tr_iter = iter(train_ge)
-            iou = 0.
-            cm = 0.
-            f1_score_ = 0.
-            recall_ = 0.
-            precision_ = 0.
-            for i in range(tr_idx):
-                batch_images, _, batch_labels = next(tr_iter)
-                for j in range(FLAGS.batch_size):
-                    batch_image = tf.expand_dims(batch_images[j], 0)
-                    raw_logits = run_model(model, batch_image, False)
-                    object_logits = tf.argmax(tf.nn.softmax(raw_logits, -1), -1, output_type=tf.int32).numpy()
-                    object_logits = np.where(object_logits == 1, 0, 1)
-
-                    batch_label = tf.cast(batch_labels[j, :, :, 0], tf.uint8).numpy()
-                    batch_label = np.where(batch_label > 128, 1, 0)
-                    batch_label = np.where(batch_label == 0, 1, 0)
-                    batch_label = np.array(batch_label, np.int32)
-
-                    cm_ = Measurement(predict=object_logits,
-                                        label=batch_label, 
-                                        shape=[FLAGS.img_size*FLAGS.img_size, ], 
-                                        total_classes=2).MIOU()
-                    
-                    cm += cm_
-
-                iou = cm[0,0]/(cm[0,0] + cm[0,1] + cm[1,0])
-                precision_ = cm[0,0] / (cm[0,0] + cm[1,0])
-                recall_ = cm[0,0] / (cm[0,0] + cm[0,1])
-                f1_score_ = (2*precision_*recall_) / (precision_ + recall_)
-            print("train mIoU = %.4f, train F1_score = %.4f, train sensitivity(recall) = %.4f, train precision = %.4f" % (iou,
-                                                                                                                        f1_score_,
-                                                                                                                        recall_,
-                                                                                                                        precision_))
-
-            output_text.write("Epoch: ")
-            output_text.write(str(epoch))
-            output_text.write("===================================================================")
-            output_text.write("\n")
-            output_text.write("train IoU: ")
-            output_text.write("%.4f" % (iou ))
-            output_text.write(", train F1_score: ")
-            output_text.write("%.4f" % (f1_score_))
-            output_text.write(", train sensitivity: ")
-            output_text.write("%.4f" % (recall_ ))
-            output_text.write(", train precision: ")
-            output_text.write("%.4f" % (precision_ ))
-            output_text.write("\n")
-
             test_iter = iter(test_ge)
             iou = 0.
             cm = 0.
@@ -447,29 +398,118 @@ def main():
             recall_ = 0.
             precision_ = 0.
             for i in range(len(test_img_dataset)):
-                batch_images, batch_labels = next(test_iter)
-                for j in range(1):
-                    batch_image = tf.expand_dims(batch_images[j], 0)
-                    raw_logits = run_model(model, batch_image, False)
-                    object_logits = tf.argmax(tf.nn.softmax(raw_logits, -1), -1, output_type=tf.int32).numpy()
-                    object_logits = np.where(object_logits == 1, 0, 1)
+                images, labels = next(test_iter)
+                image = images[0].numpy()
+                label = labels[0, :, :, 0].numpy()
+                label = np.where(label > 128, 0, 1)
+                shape = tf.keras.backend.int_shape(image)
+                height = shape[0]
+                width = shape[1]
 
-                    batch_label = tf.cast(batch_labels[j, :, :, 0], tf.uint8).numpy()
-                    batch_label = np.where(batch_label > 128, 1, 0)
-                    batch_label = np.where(batch_label == 0, 1, 0)
-                    batch_label = np.array(batch_label, np.int32)
+                desired_h = 1728    # Apple A
+                desired_w = 1728    # Apple A
 
-                    cm_ = Measurement(predict=object_logits,
-                                        label=batch_label, 
-                                        shape=[FLAGS.img_size*FLAGS.img_size, ], 
-                                        total_classes=2).MIOU()
+                if height == 3456 and width == 5184:    # Apple A
+                    for j in range(2):
+                        for k in range(3):
+                            split_img = image[j*desired_h:(j+1)*desired_h, k*desired_w:(k+1)*desired_w, :]
+                            # split_lab = label[j*desired_h:(j+1)*desired_h, k*desired_w:(k+1)*desired_w]
+                            # split_lab = np.where(split_lab > 128, 255, 0)
+
+                            split_img = tf.expand_dims(split_img, 0)
+                            split_img = tf.image.resize(split_img, [FLAGS.img_size, FLAGS.img_size])
+                            output = run_model(model, split_img, False)
+                            
+                            output = tf.argmax(tf.nn.softmax(output[0], -1), -1, output_type=tf.int32)
+                            
+                            output = tf.image.resize(output[:, :, tf.newaxis], [1728, 1728], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR).numpy()
+                            output = output[:, :, 0]
+                            # temp_image = tf.image.resize(split_img, [1728, 1728]).numpy()
+                            # temp_image = temp_image[0]
+
+                            if j == 0 and k == 0:
+                                final_output = output
+                                # final_image = temp_image
+                            else:
+                                if j == 0:
+                                    final_output = tf.concat([final_output, output], 1)
+                                    # final_image = tf.concat([final_image, temp_image], 1)
+                                else:
+                                    if j == 1 and k == 0:
+                                        final_output2 = output
+                                        # final_image2 = temp_image
+                                    else:
+                                        final_output2 = tf.concat([final_output2, output], 1)
+                                        # final_image2 = tf.concat([final_image2, temp_image], 1)
+
+                    # final_image3 = tf.concat([final_image, final_image2], 0)
+                    final_output3 = tf.concat([final_output, final_output2], 0).numpy()
+                    # final_output3 = color_map[final_output3]
+                    final_output3 = np.where(final_output3 == 1, 0, 1)
+                    object_logit = np.array(final_output3, np.int32)
                     
-                    cm += cm_
+                    #plt.imsave("C:/Users/Yuhwan/Downloads/tt" + "/" + test_img_dataset[i].split("/")[-1], final_output3 / 255)
+                
+                            # 이제 여기서 붙여야함
 
-                iou = cm[0,0]/(cm[0,0] + cm[0,1] + cm[1,0])
-                precision_ = cm[0,0] / (cm[0,0] + cm[1,0])
-                recall_ = cm[0,0] / (cm[0,0] + cm[0,1])
-                f1_score_ = (2*precision_*recall_) / (precision_ + recall_)
+                if height == 5184 and width == 3456:    # Apple A
+                    for j in range(3):
+                        for k in range(2):
+                            split_img = image[j*desired_h:(j+1)*desired_h, k*desired_w:(k+1)*desired_w, :]
+                            split_lab = label[j*desired_h:(j+1)*desired_h, k*desired_w:(k+1)*desired_w]
+                            split_lab = np.where(split_lab > 128, 255, 0)
+
+                            split_img = tf.expand_dims(split_img, 0)
+                            split_img = tf.image.resize(split_img, [FLAGS.img_size, FLAGS.img_size])
+                            output = run_model(model, split_img, False)
+                            
+                            output = tf.argmax(tf.nn.softmax(output[0], -1), -1, output_type=tf.int32)
+                            
+                            output = tf.image.resize(output[:, :, tf.newaxis], [1728, 1728], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR).numpy()
+                            output = output[:, :, 0]
+                            # temp_image = tf.image.resize(split_img, [1728, 1728]).numpy()
+                            # temp_image = temp_image[0]
+
+                            if j == 0 and k == 0:
+                                final_output = output
+                                # final_image = temp_image
+                            else:
+                                if j == 0:
+                                    final_output = tf.concat([final_output, output], 1)
+                                    # final_image = tf.concat([final_image, temp_image], 1)
+                                else:
+                                    if j == 1 and k == 0:
+                                        final_output2 = output
+                                        # final_image2 = temp_image
+                                    else:
+                                        if j == 1:
+                                            final_output2 = tf.concat([final_output2, output], 1)
+                                            # final_image2 = tf.concat([final_image2, temp_image], 1)
+                                        else:
+                                            if j == 2 and k == 0:
+                                                final_output3 = output
+                                                # final_image3 = temp_image
+                                            else:
+                                                final_output3 = tf.concat([final_output3, output], 1)
+                                                # final_image3 = tf.concat([final_image3, temp_image], 1)
+
+                    # final_image4 = tf.concat([final_image, final_image2, final_image3], 0)
+                    final_output4 = tf.concat([final_output, final_output2, final_output3], 0).numpy()
+                    # final_output4 = color_map[final_output4]
+                    final_output4 = np.where(final_output4 == 1, 0, 1)
+                    object_logit = np.array(final_output4, np.int32)
+
+                cm_ = Measurement(predict=object_logit,
+                                    label=label, 
+                                    shape=[5184*3456,], 
+                                    total_classes=2).MIOU()
+                    
+                cm += cm_
+
+            iou = cm[0,0]/(cm[0,0] + cm[0,1] + cm[1,0])
+            precision_ = cm[0,0] / (cm[0,0] + cm[1,0])
+            recall_ = cm[0,0] / (cm[0,0] + cm[0,1])
+            f1_score_ = (2*precision_*recall_) / (precision_ + recall_)
 
 
             print("test mIoU = %.4f, test F1_score = %.4f, test sensitivity(recall) = %.4f, test precision = %.4f" % (iou,
