@@ -56,8 +56,8 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "train": True})
 
-optim = tf.keras.optimizers.Adam(FLAGS.lr, beta_1=0.5)
-optim2 = tf.keras.optimizers.Adam(FLAGS.lr, beta_1=0.5)
+optim = tf.keras.optimizers.Adam(FLAGS.lr)
+optim2 = tf.keras.optimizers.Adam(FLAGS.lr)
 color_map = np.array([[0, 0, 0],[255,0,0]], np.uint8)
 
 def tr_func(image_list, label_list):
@@ -306,6 +306,106 @@ def main():
                         plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, i) + "_predict.png", pred_mask_color)
 
                 count += 1
+
+            tr_iter = iter(train_ge)
+            iou = 0.
+            cm = 0.
+            f1_score_ = 0.
+            recall_ = 0.
+            precision_ = 0.
+            for i in range(tr_idx):
+                batch_images, _, batch_labels = next(tr_iter)
+                for j in range(FLAGS.batch_size):
+                    batch_image = tf.expand_dims(batch_images[j], 0)
+                    first_output = run_model(model, batch_image, False)
+                    second_output = run_model(model2, batch_image * tf.nn.sigmoid(first_output), False)
+                    final_output = tf.nn.softmax(second_output[0, :, :, :], -1)
+                    final_output = tf.argmax(final_output, -1, output_type=tf.int32)
+                    final_output = tf.where(final_output == 0, 1, 0)
+
+                    batch_label = tf.cast(batch_labels[j, :, :, 0], tf.uint8).numpy()
+                    batch_label = np.where(batch_label == 0, 1, 0)
+                    batch_label = np.array(batch_label, np.int32)
+
+                    cm_ = Measurement(predict=final_output,
+                                        label=batch_label, 
+                                        shape=[FLAGS.img_size*FLAGS.img_size, ], 
+                                        total_classes=2).MIOU()
+                    
+                    cm += cm_
+
+                iou = cm[0,0]/(cm[0,0] + cm[0,1] + cm[1,0])
+                precision_ = cm[0,0] / (cm[0,0] + cm[1,0])
+                recall_ = cm[0,0] / (cm[0,0] + cm[0,1])
+                f1_score_ = (2*precision_*recall_) / (precision_ + recall_)
+            print("train mIoU = %.4f, train F1_score = %.4f, train sensitivity(recall) = %.4f, train precision = %.4f" % (iou,
+                                                                                                                        f1_score_,
+                                                                                                                        recall_,
+                                                                                                                        precision_))
+
+            output_text.write("Epoch: ")
+            output_text.write(str(epoch))
+            output_text.write("===================================================================")
+            output_text.write("\n")
+            output_text.write("train IoU: ")
+            output_text.write("%.4f" % (iou ))
+            output_text.write(", train F1_score: ")
+            output_text.write("%.4f" % (f1_score_))
+            output_text.write(", train sensitivity: ")
+            output_text.write("%.4f" % (recall_ ))
+            output_text.write(", train precision: ")
+            output_text.write("%.4f" % (precision_ ))
+            output_text.write("\n")
+
+            test_iter = iter(test_ge)
+            iou = 0.
+            cm = 0.
+            f1_score_ = 0.
+            recall_ = 0.
+            precision_ = 0.
+            for i in range(len(test_img_dataset)):
+                batch_images, batch_labels = next(test_iter)
+                for j in range(1):
+                    batch_image = tf.expand_dims(batch_images[j], 0)
+                    first_output = run_model(model, batch_image, False)
+                    second_output = run_model(model2, batch_image * tf.nn.sigmoid(first_output), False)
+                    final_output = tf.nn.softmax(second_output[0, :, :, :], -1)
+                    final_output = tf.argmax(final_output, -1, output_type=tf.int32)
+                    final_output = tf.where(final_output == 0, 1, 0)
+
+                    batch_label = tf.cast(batch_labels[j, :, :, 0], tf.uint8).numpy()
+                    batch_label = np.where(batch_label == 0, 1, 0)
+                    batch_label = np.array(batch_label, np.int32)
+
+                    cm_ = Measurement(predict=final_output,
+                                        label=batch_label, 
+                                        shape=[FLAGS.img_size*FLAGS.img_size, ], 
+                                        total_classes=2).MIOU()
+                    
+                    cm += cm_
+
+                iou = cm[0,0]/(cm[0,0] + cm[0,1] + cm[1,0])
+                precision_ = cm[0,0] / (cm[0,0] + cm[1,0])
+                recall_ = cm[0,0] / (cm[0,0] + cm[0,1])
+                f1_score_ = (2*precision_*recall_) / (precision_ + recall_)
+
+
+            print("test mIoU = %.4f, test F1_score = %.4f, test sensitivity(recall) = %.4f, test precision = %.4f" % (iou,
+                                                                                                                    f1_score_,
+                                                                                                                    recall_,
+                                                                                                                    precision_))
+            output_text.write("test IoU: ")
+            output_text.write("%.4f" % (iou))
+            output_text.write(", test F1_score: ")
+            output_text.write("%.4f" % (f1_score_))
+            output_text.write(", test sensitivity: ")
+            output_text.write("%.4f" % (recall_ ))
+            output_text.write(", test precision: ")
+            output_text.write("%.4f" % (precision_))
+            output_text.write("\n")
+            output_text.write("===================================================================")
+            output_text.write("\n")
+            output_text.flush()
 
 if __name__ == "__main__":
     main()
