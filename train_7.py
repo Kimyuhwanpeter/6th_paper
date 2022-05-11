@@ -56,8 +56,8 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "train": True})
 
-optim = tf.keras.optimizers.Adam(FLAGS.lr)
-optim2 = tf.keras.optimizers.Adam(FLAGS.lr)
+optim = tf.keras.optimizers.Adam(FLAGS.lr, beta_1=0.5)
+optim2 = tf.keras.optimizers.Adam(FLAGS.lr, beta_1=0.5)
 color_map = np.array([[0, 0, 0],[255,0,0]], np.uint8)
 
 def tr_func(image_list, label_list):
