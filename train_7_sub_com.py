@@ -7,21 +7,20 @@ from Cal_measurement import *
 import matplotlib.pyplot as plt
 import numpy as np
 import easydict
-import os
 
 FLAGS = easydict.EasyDict({"img_size": 512,
 
-                           "train_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/train_fix.txt",
+                           "train_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/train.txt",
 
-                           "test_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/test.txt",
+                           "test_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/test.txt",
                            
-                           "tr_label_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/augment_label/",
+                           "tr_label_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerLabels_temp/",
                            
-                           "tr_image_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/augment_train/",
+                           "tr_image_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerImages/",
 
-                           "te_label_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/FlowerLabels_test/",
+                           "te_label_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerLabels_test/",
                            
-                           "te_image_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/Flowerimages_test/",
+                           "te_image_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/Flowerimages_test/",
                            
                            "pre_checkpoint": False,
                            
@@ -37,13 +36,13 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "ignore_label": 0,
 
-                           "batch_size": 4,
+                           "batch_size": 1,
 
-                           "sample_images": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/sample_images",
+                           "sample_images": "C:/Users/Yuhwan/Downloads/tt",
 
-                           "save_checkpoint": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/checkpoint",
+                           "save_checkpoint": "C:/Users/Yuhwan/Downloads/tt",
 
-                           "save_print": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/train_out.txt",
+                           "save_print": "C:/Users/Yuhwan/Downloads/train_out.txt",
 
                            "train_loss_graphs": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/V2/BoniRob/train_loss.txt",
 
@@ -211,7 +210,11 @@ def run_model(model, images, training=True):
     return model(images, training=training)
 
 def cal_loss(model, model2, images, labels, object_buf):
-
+    # 목표: 70 % 에 가깝도록 만들어보자
+    # 우선 이 폼은 유지하고 수정을 진행하자.
+    # 현재 metrics leanring에 대해 생각하는중임
+    # metrics leanring 이 어떻게 segmentation에 적용될지는 고민해보고
+    # 현재 본컴 및 서브컴퓨터에서 실험이 진행중이므로, 이 결과는 내일 확인해봐야할듯?
     with tf.GradientTape() as tape: # only object loss (1-channel)
         logits = run_model(model,images, True)
         first_output = tf.reshape(logits, [-1])
@@ -250,6 +253,48 @@ def cal_loss(model, model2, images, labels, object_buf):
 
     grads2 = tape2.gradient(total_loss, model2.trainable_variables)
     optim2.apply_gradients(zip(grads2, model2.trainable_variables))
+
+    with tf.GradientTape(persistent=True) as tape3: # 이 부근에 라벨을 추가해볼까?
+        batch_labels = tf.reshape(labels, [-1,])
+        one_hot_labels = tf.one_hot(tf.squeeze(labels, -1), 2)
+        one_hot_labels = tf.where(one_hot_labels[:, :, :, :] == 0, -1, one_hot_labels)
+
+        one_hot_labels = tf.nn.softmax(one_hot_labels, -1)
+        one_hot_labels = one_hot_labels[:, :, :, 1:]
+
+        first_output3 = run_model(model, images * one_hot_labels, True)
+        first_output1 = tf.reshape(first_output3, [-1,])
+        second_output3 = run_model(model2, (images * tf.nn.sigmoid(first_output3)) * one_hot_labels, True)
+
+        first_output3 = tf.reshape(first_output3, [-1,])
+        first_output3 = tf.nn.sigmoid(first_output3)
+        first_output3_background = 1. - first_output3
+        
+        object_indices = tf.squeeze(tf.where(batch_labels == 1), -1)
+        background_indices = tf.squeeze(tf.where(batch_labels == 0), -1)
+        first_output3_object = tf.gather(first_output3, object_indices)
+        first_output3_background = tf.gather(first_output3_background, background_indices)
+
+        second_output3 = tf.reshape(second_output3, [-1, 2])
+        second_output3 = tf.nn.softmax(second_output3, -1)
+        second_output3_object = tf.gather(second_output3[:, 1], object_indices)
+        second_output3_background = tf.gather(second_output3[:, 0], background_indices)
+
+        simiarirty_object = tf.reduce_mean((first_output3_object - second_output3_object)**2)
+        simiarirty_background = tf.reduce_mean((first_output3_background - second_output3_background)**2)
+        sim_loss = simiarirty_object + simiarirty_background
+
+        #object_output = tf.gather(first_output1, object_indices)
+        #object_labels = tf.gather(batch_labels, object_indices)
+        #first_loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)(object_labels, object_output)
+
+        #second_loss = categorical_focal_loss([object_buf[0], object_buf[1]])(tf.one_hot(batch_labels, 2), second_output3)
+
+    grads3 = tape3.gradient(sim_loss, model.trainable_variables)
+    grads4 = tape3.gradient(sim_loss, model2.trainable_variables)
+
+    optim.apply_gradients(zip(grads3, model.trainable_variables))
+    optim2.apply_gradients(zip(grads4, model2.trainable_variables))
 
     return total_loss
 
@@ -336,7 +381,7 @@ def main():
                         plt.imsave(FLAGS.sample_images + "/{}_batch_{}".format(count, i) + "_predict.png", pred_mask_color)
 
                 count += 1
-                
+
             tr_iter = iter(train_ge)
             iou = 0.
             cm = 0.
