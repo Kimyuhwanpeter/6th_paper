@@ -7,20 +7,21 @@ from Cal_measurement import *
 import matplotlib.pyplot as plt
 import numpy as np
 import easydict
+import os
 
 FLAGS = easydict.EasyDict({"img_size": 512,
 
-                           "train_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/train.txt",
+                           "train_txt_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/train_fix.txt",
 
-                           "test_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/test.txt",
+                           "test_txt_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/test.txt",
                            
-                           "tr_label_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerLabels_temp/",
+                           "tr_label_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/augment_label/",
                            
-                           "tr_image_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerImages/",
+                           "tr_image_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/augment_train/",
 
-                           "te_label_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerLabels_test/",
+                           "te_label_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/FlowerLabels_test/",
                            
-                           "te_image_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/Flowerimages_test/",
+                           "te_image_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/Flowerimages_test/",
                            
                            "pre_checkpoint": False,
                            
@@ -36,13 +37,13 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "ignore_label": 0,
 
-                           "batch_size": 1,
+                           "batch_size": 2,
 
-                           "sample_images": "C:/Users/Yuhwan/Downloads/tt",
+                           "sample_images": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/6th_paper/proposed_method/Apple_A/sample_images",
 
-                           "save_checkpoint": "C:/Users/Yuhwan/Downloads/tt",
+                           "save_checkpoint": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/6th_paper/proposed_method/Apple_A/checkpoint",
 
-                           "save_print": "C:/Users/Yuhwan/Downloads/train_out.txt",
+                           "save_print": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/6th_paper/proposed_method/Apple_A/train_out.txt",
 
                            "train_loss_graphs": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/V2/BoniRob/train_loss.txt",
 
@@ -260,11 +261,12 @@ def cal_loss(model, model2, images, labels, object_buf):
         one_hot_labels = tf.where(one_hot_labels[:, :, :, :] == 0, -1, one_hot_labels)
 
         one_hot_labels = tf.nn.softmax(one_hot_labels, -1)
-        one_hot_labels = one_hot_labels[:, :, :, 1:]
+        one_hot_labels = one_hot_labels[:, :, :, 1]
+        one_hot_labels = tf.reshape(one_hot_labels, [-1, ])
 
-        first_output3 = run_model(model, images * one_hot_labels, True)
+        first_output3 = run_model(model, images, True)
         first_output1 = tf.reshape(first_output3, [-1,])
-        second_output3 = run_model(model2, (images * tf.nn.sigmoid(first_output3)) * one_hot_labels, True)
+        second_output3 = run_model(model2, (images * tf.nn.sigmoid(first_output3)), True)
 
         first_output3 = tf.reshape(first_output3, [-1,])
         first_output3 = tf.nn.sigmoid(first_output3)
@@ -280,8 +282,12 @@ def cal_loss(model, model2, images, labels, object_buf):
         second_output3_object = tf.gather(second_output3[:, 1], object_indices)
         second_output3_background = tf.gather(second_output3[:, 0], background_indices)
 
-        simiarirty_object = tf.reduce_mean((first_output3_object - second_output3_object)**2)
-        simiarirty_background = tf.reduce_mean((first_output3_background - second_output3_background)**2)
+        one_hot_labels_object = tf.gather(one_hot_labels, object_indices)
+        one_hot_labels_background = tf.gather(one_hot_labels, background_indices)
+
+
+        simiarirty_object = tf.reduce_mean((first_output3_object - one_hot_labels_object)**2) + tf.reduce_mean((second_output3_object - one_hot_labels_object)**2)
+        simiarirty_background = tf.reduce_mean((first_output3_background - one_hot_labels_background)**2) + tf.reduce_mean((second_output3_background - one_hot_labels_background)**2)
         sim_loss = simiarirty_object + simiarirty_background
 
         #object_output = tf.gather(first_output1, object_indices)
