@@ -9,7 +9,7 @@ import numpy as np
 import easydict
 import os
 
-FLAGS = easydict.EasyDict({"img_size": 512,
+FLAGS = easydict.EasyDict({"img_size": 256,
 
                            "train_txt_path": "/yuwhan/yuwhan/Dataset/Segmentation/Apple_A/train_fix.txt",
 
@@ -37,7 +37,7 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "ignore_label": 0,
 
-                           "batch_size": 2,
+                           "batch_size": 4,
 
                            "sample_images": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/6th_paper/proposed_method/Apple_A/sample_images",
 
@@ -211,104 +211,113 @@ def run_model(model, images, training=True):
     return model(images, training=training)
 
 def cal_loss(model, model2, images, labels, object_buf):
-    # 목표: 70 % 에 가깝도록 만들어보자
-    # 우선 이 폼은 유지하고 수정을 진행하자.
-    # 현재 metrics leanring에 대해 생각하는중임
-    # metrics leanring 이 어떻게 segmentation에 적용될지는 고민해보고
-    # 현재 본컴 및 서브컴퓨터에서 실험이 진행중이므로, 이 결과는 내일 확인해봐야할듯?
+
     with tf.GradientTape() as tape: # only object loss (1-channel)
-        logits = run_model(model,images, True)
+        logits_4, logits_3, logits_2, logits_1, logits = run_model(model,images, True)
+        first_output_4 = tf.reshape(logits_4, [-1])
+        first_output_3 = tf.reshape(logits_3, [-1])
+        first_output_2 = tf.reshape(logits_2, [-1])
+        first_output_1 = tf.reshape(logits_1, [-1])
         first_output = tf.reshape(logits, [-1])
         batch_labels = tf.reshape(labels, [-1,])
         
         object_indices = tf.squeeze(tf.where(batch_labels == 1), -1)
+        object_output_4 = tf.gather(first_output_4, object_indices)
+        object_output_3 = tf.gather(first_output_3, object_indices)
+        object_output_2 = tf.gather(first_output_2, object_indices)
+        object_output_1 = tf.gather(first_output_1, object_indices)
         object_output = tf.gather(first_output, object_indices)
         object_labels = tf.gather(batch_labels, object_indices)
         
-        loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)(object_labels, object_output) \
-            + true_dice_loss(object_labels, tf.nn.sigmoid(object_output))
-        
+        loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)(object_labels, object_output)
+            # + true_dice_loss(object_labels, tf.nn.sigmoid(object_output))
+        loss_4 = tf.keras.losses.BinaryCrossentropy(from_logits=True)(object_labels, object_output_4)
+            # + true_dice_loss(object_labels, tf.nn.sigmoid(object_output))
+        loss_3 = tf.keras.losses.BinaryCrossentropy(from_logits=True)(object_labels, object_output_3)
+            # + true_dice_loss(object_labels, tf.nn.sigmoid(object_output))
+        loss_2 = tf.keras.losses.BinaryCrossentropy(from_logits=True)(object_labels, object_output_2)
+            # + true_dice_loss(object_labels, tf.nn.sigmoid(object_output))
+        loss_1 = tf.keras.losses.BinaryCrossentropy(from_logits=True)(object_labels, object_output_1)
+            # + true_dice_loss(object_labels, tf.nn.sigmoid(object_output))
+            
+        total_loss = loss + (loss_1 / 2) + (loss_2 / 4) + (loss_3 / 8) + (loss_4 / 16)
 
-    grads = tape.gradient(loss, model.trainable_variables)
+    grads = tape.gradient(total_loss, model.trainable_variables)
     optim.apply_gradients(zip(grads, model.trainable_variables))
 
     with tf.GradientTape() as tape2: # object and background loss (2-channels)
-        second_output = run_model(model2, images* tf.nn.sigmoid(logits), True)
+        second_output_4, second_output_3, second_output_2, second_output_1, second_output = run_model(model2, images* tf.nn.sigmoid(logits), True)
+        second_output_4 = tf.reshape(second_output_4, [-1, 2])
+        second_output_4 = tf.nn.softmax(second_output_4, -1)
+        
+        second_output_3 = tf.reshape(second_output_3, [-1, 2])
+        second_output_3 = tf.nn.softmax(second_output_3, -1)
+        
+        second_output_2 = tf.reshape(second_output_2, [-1, 2])
+        second_output_2 = tf.nn.softmax(second_output_2, -1)
+        
+        second_output_1 = tf.reshape(second_output_1, [-1, 2])
+        second_output_1 = tf.nn.softmax(second_output_1, -1)
+        
         second_output = tf.reshape(second_output, [-1, 2])
         second_output = tf.nn.softmax(second_output, -1)
+        
         batch_labels = tf.reshape(labels, [-1,])
         batch_labels = tf.one_hot(batch_labels, 2)
 
-        loss = categorical_focal_loss([object_buf[0], object_buf[1]])(batch_labels, second_output)
+        loss_ = categorical_focal_loss([object_buf[0], object_buf[1]])(batch_labels, second_output)
+        loss_4 = categorical_focal_loss([object_buf[0], object_buf[1]])(batch_labels, second_output_4)
+        loss_3 = categorical_focal_loss([object_buf[0], object_buf[1]])(batch_labels, second_output_3)
+        loss_2 = categorical_focal_loss([object_buf[0], object_buf[1]])(batch_labels, second_output_2)
+        loss_1 = categorical_focal_loss([object_buf[0], object_buf[1]])(batch_labels, second_output_1)
+        
+        loss = loss_ + (loss_1 / 2) + (loss_2 / 4) + (loss_3 / 8) + (loss_4 / 16)
         
         # this part need to fix
         background_labels = batch_labels[:, 0]
         background_logits = second_output[:, 0]
+        background_logits_4 = second_output_4[:, 0]
+        background_logits_3 = second_output_3[:, 0]
+        background_logits_2 = second_output_2[:, 0]
+        background_logits_1 = second_output_1[:, 0]
+        
         object_labels = batch_labels[:, 1]
         object_logits = second_output[:, 1]
+        object_logits_4 = second_output_4[:, 1]
+        object_logits_3 = second_output_3[:, 1]
+        object_logits_2 = second_output_2[:, 1]
+        object_logits_1 = second_output_1[:, 1]
         
-        background_loss = false_dice_loss(background_labels, 1 - background_logits)
-        object_loss = true_dice_loss(object_labels, object_logits)
+        background_loss_ = tf.keras.losses.BinaryCrossentropy(from_logits=False)(background_labels, 1 - background_logits)
+        object_loss_ = tf.keras.losses.BinaryCrossentropy(from_logits=False)(object_labels, object_logits)
+        
+        background_loss_4 = tf.keras.losses.BinaryCrossentropy(from_logits=False)(background_labels, 1 - background_logits_4)
+        object_loss_4 = tf.keras.losses.BinaryCrossentropy(from_logits=False)(object_labels, object_logits_4)
+        
+        background_loss_3 = tf.keras.losses.BinaryCrossentropy(from_logits=False)(background_labels, 1 - background_logits_3)
+        object_loss_3 = tf.keras.losses.BinaryCrossentropy(from_logits=False)(object_labels, object_logits_3)
+        
+        background_loss_2 = tf.keras.losses.BinaryCrossentropy(from_logits=False)(background_labels, 1 - background_logits_2)
+        object_loss_2 = tf.keras.losses.BinaryCrossentropy(from_logits=False)(object_labels, object_logits_2)
+        
+        background_loss_1 = tf.keras.losses.BinaryCrossentropy(from_logits=False)(background_labels, 1 - background_logits_1)
+        object_loss_1 = tf.keras.losses.BinaryCrossentropy(from_logits=False)(object_labels, object_logits_1)
+
+        background_loss = background_loss_ + (background_loss_4 / 16) + (background_loss_3 / 8) + (background_loss_2 / 4) + (background_loss_1 / 2)
+        object_loss = object_loss_ + (object_loss_4 / 16) + (object_loss_3 / 8) + (object_loss_2 / 4) + (object_loss_1 / 2)
         
         total_loss = loss + background_loss + object_loss
 
     grads2 = tape2.gradient(total_loss, model2.trainable_variables)
     optim2.apply_gradients(zip(grads2, model2.trainable_variables))
 
-    with tf.GradientTape(persistent=True) as tape3: # 이 부근에 라벨을 추가해볼까?
-        batch_labels = tf.reshape(labels, [-1,])
-        one_hot_labels = tf.one_hot(tf.squeeze(labels, -1), 2)
-        one_hot_labels = tf.where(one_hot_labels[:, :, :, :] == 0, -1, one_hot_labels)
-
-        one_hot_labels = tf.nn.softmax(one_hot_labels, -1)
-        one_hot_labels = one_hot_labels[:, :, :, 1]
-        one_hot_labels = tf.reshape(one_hot_labels, [-1, ])
-
-        first_output3 = run_model(model, images, True)
-        first_output1 = tf.reshape(first_output3, [-1,])
-        second_output3 = run_model(model2, (images * tf.nn.sigmoid(first_output3)), True)
-
-        first_output3 = tf.reshape(first_output3, [-1,])
-        first_output3 = tf.nn.sigmoid(first_output3)
-        first_output3_background = 1. - first_output3
-        
-        object_indices = tf.squeeze(tf.where(batch_labels == 1), -1)
-        background_indices = tf.squeeze(tf.where(batch_labels == 0), -1)
-        first_output3_object = tf.gather(first_output3, object_indices)
-        first_output3_background = tf.gather(first_output3_background, background_indices)
-
-        second_output3 = tf.reshape(second_output3, [-1, 2])
-        second_output3 = tf.nn.softmax(second_output3, -1)
-        second_output3_object = tf.gather(second_output3[:, 1], object_indices)
-        second_output3_background = tf.gather(second_output3[:, 0], background_indices)
-
-        one_hot_labels_object = tf.gather(one_hot_labels, object_indices)
-        one_hot_labels_background = tf.gather(one_hot_labels, background_indices)
-
-
-        simiarirty_object = tf.reduce_mean((first_output3_object - one_hot_labels_object)**2) + tf.reduce_mean((second_output3_object - one_hot_labels_object)**2)
-        simiarirty_background = tf.reduce_mean((first_output3_background - one_hot_labels_background)**2) + tf.reduce_mean((second_output3_background - one_hot_labels_background)**2)
-        sim_loss = simiarirty_object + simiarirty_background
-
-        #object_output = tf.gather(first_output1, object_indices)
-        #object_labels = tf.gather(batch_labels, object_indices)
-        #first_loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)(object_labels, object_output)
-
-        #second_loss = categorical_focal_loss([object_buf[0], object_buf[1]])(tf.one_hot(batch_labels, 2), second_output3)
-
-    grads3 = tape3.gradient(sim_loss, model.trainable_variables)
-    grads4 = tape3.gradient(sim_loss, model2.trainable_variables)
-
-    optim.apply_gradients(zip(grads3, model.trainable_variables))
-    optim2.apply_gradients(zip(grads4, model2.trainable_variables))
-
     return total_loss
 
 def main():
 
-    model = multi_scale_network(input_shape=(FLAGS.img_size, FLAGS.img_size, 3), nclasses=1)
+    model = multi_scale_network_1(input_shape=(FLAGS.img_size, FLAGS.img_size, 3), nclasses=1)
     model.summary()
-    model2 = multi_scale_network(input_shape=(FLAGS.img_size, FLAGS.img_size, 3), nclasses=2)
+    model2 = multi_scale_network_2(input_shape=(FLAGS.img_size, FLAGS.img_size, 3), nclasses=2)
     model2.summary()
 
     if FLAGS.pre_checkpoint:
