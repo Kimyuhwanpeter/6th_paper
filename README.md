@@ -12,3 +12,4 @@
 * Current - writing review comment (Done)
 * **train_7_main_com.py is promising (0.5951)**
 * colab 및 서브컴에 돌리고있는 train_7_colab.py 및 train_7_sub_com.py 꼭 결과보기
+* model_9와 model_9_fix는 코랩에 학습중
