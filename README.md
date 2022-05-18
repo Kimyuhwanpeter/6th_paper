@@ -16,3 +16,4 @@
 
 * model_9_fix는 코랩에 re학습중 (change focal to cross entropy)
 * train_9_fix.py sub com
+* train_9_fix2.py main com
