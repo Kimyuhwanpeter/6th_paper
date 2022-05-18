@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from model_9 import *
+from model_9_fix import *
 from random import random, shuffle
 from tensorflow.keras import backend as K
 from Cal_measurement import *
