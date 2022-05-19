@@ -232,8 +232,10 @@ def cal_loss(model, images, labels, object_buf):
         object_labels = batch_labels[:, 1]
         object_logits = second_output[:, 1]
         
-        background_loss_ = false_dice_loss(background_labels, 1 - background_logits)
-        object_loss_ = true_dice_loss(object_labels, object_logits)
+        background_loss_ = false_dice_loss(background_labels, 1 - background_logits) \
+            + tf.keras.losses.BinaryCrossentropy(from_logits=False)(background_labels, background_logits)
+        object_loss_ = true_dice_loss(object_labels, object_logits) \
+            + tf.keras.losses.BinaryCrossentropy(from_logits=False)(object_labels, object_logits)
        
         background_loss = background_loss_
         object_loss = object_loss_
