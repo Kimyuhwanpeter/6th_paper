@@ -7,24 +7,25 @@ from Cal_measurement import *
 import matplotlib.pyplot as plt
 import numpy as np
 import easydict
+import os
 
 FLAGS = easydict.EasyDict({"img_size": 512,
 
-                           "train_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/train.txt",
+                           "train_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/train_fix.txt",
 
-                           "test_txt_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/test.txt",
+                           "test_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/test.txt",
                            
-                           "tr_label_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerLabels_temp/",
+                           "tr_label_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/augment_label/",
                            
-                           "tr_image_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerImages/",
+                           "tr_image_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/augment_train/",
 
-                           "te_label_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/FlowerLabels_test/",
+                           "te_label_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/FlowerLabels_test/",
                            
-                           "te_image_path": "D:/[1]DB/[5]4th_paper_DB/Fruit/apple_pear/Flowerimages_test/",
+                           "te_image_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/Flowerimages_test/",
                            
                            "pre_checkpoint": False,
                            
-                           "pre_checkpoint_path": "C:/Users/Yuhwan/Downloads/398/398",
+                           "pre_checkpoint_path": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/checkpoint/29",
                            
                            "lr": 0.0001,
 
@@ -36,13 +37,13 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "ignore_label": 0,
 
-                           "batch_size": 1,
+                           "batch_size": 3,
 
-                           "sample_images": "C:/Users/Yuhwan/Downloads/tt",
+                           "sample_images": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/sample_images",
 
-                           "save_checkpoint": "C:/Users/Yuhwan/Downloads/tt",
+                           "save_checkpoint": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/checkpoint",
 
-                           "save_print": "C:/Users/Yuhwan/Downloads/train_out.txt",
+                           "save_print": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/train_out.txt",
 
                            "train_loss_graphs": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/V2/BoniRob/train_loss.txt",
 
@@ -96,14 +97,14 @@ def test_func(image_list, label_list):
 
     img = tf.io.read_file(image_list)
     img = tf.image.decode_jpeg(img, 3)
-    #img = tf.image.resize(img, [FLAGS.img_size, FLAGS.img_size])
+    img = tf.image.resize(img, [1024, 1024])
     #img = tf.clip_by_value(img, 0, 255)
     # img = img[:, :, ::-1] - tf.constant([103.939, 116.779, 123.68])
     img = img / 255.
 
     lab = tf.io.read_file(label_list)
     lab = tf.image.decode_jpeg(lab, 1)
-    #lab = tf.image.resize(lab, [FLAGS.img_size, FLAGS.img_size], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+    lab = tf.image.resize(lab, [1024, 1024], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
     lab = tf.image.convert_image_dtype(lab, tf.uint8)
 
     return img, lab
@@ -211,7 +212,7 @@ def run_model(model, images, training=True):
 def cal_loss(model, images, labels, object_buf):
 
     with tf.GradientTape() as tape: # object and background loss (2-channels)
-        second_output = run_model(model2, images* tf.nn.sigmoid(logits), True)
+        second_output = run_model(model, images, True)
         
         second_output = tf.reshape(second_output, [-1, 2])
         second_output = tf.nn.softmax(second_output, -1)
@@ -219,7 +220,8 @@ def cal_loss(model, images, labels, object_buf):
         batch_labels = tf.reshape(labels, [-1,])
         batch_labels = tf.one_hot(batch_labels, 2)
 
-        loss_ = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(batch_labels, second_output)
+        # loss_ = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(batch_labels, second_output)
+        loss_ = categorical_focal_loss([object_buf[0], object_buf[1]])(batch_labels, second_output)
         
         loss = loss_
         
@@ -245,7 +247,7 @@ def cal_loss(model, images, labels, object_buf):
 
 def main():
 
-    model = multi_scale_network(input_shape=(FLAGS.img_size, FLAGS.img_size, 3), nclasses=2)
+    model = multi_region_class(input_shape=(FLAGS.img_size, FLAGS.img_size, 3), nclasses=2)
     model.summary()
 
     if FLAGS.pre_checkpoint:
@@ -268,11 +270,6 @@ def main():
 
         train_lab_dataset = [FLAGS.tr_label_path + data for data in train_list]
         test_lab_dataset = [FLAGS.te_label_path + data for data in test_list]
-
-        test_ge = tf.data.Dataset.from_tensor_slices((test_img_dataset, test_lab_dataset))
-        test_ge = test_ge.map(test_func)
-        test_ge = test_ge.batch(1)
-        test_ge = test_ge.prefetch(tf.data.experimental.AUTOTUNE)
 
         for epoch in range(FLAGS.epochs):
             A = list(zip(train_img_dataset, train_lab_dataset))
@@ -374,12 +371,10 @@ def main():
             output_text.write("%.4f" % (precision_ ))
             output_text.write("\n")
 
-
-            #tr_iter = iter(train_ge)
-            #for i in range(tr_idx):
-            #    tr_images, _, tr_labels = next(tr_iter)
-            #    batch_labels = tf.where(batch_labels > 128, 1, 0).numpy()
-            #    for j in range(1):
+            test_ge = tf.data.Dataset.from_tensor_slices((test_img_dataset, test_lab_dataset))
+            test_ge = test_ge.map(test_func)
+            test_ge = test_ge.batch(1)
+            test_ge = test_ge.prefetch(tf.data.experimental.AUTOTUNE)
 
             test_iter = iter(test_ge)
             iou = 0.
@@ -396,29 +391,18 @@ def main():
                 height = shape[0]
                 width = shape[1]
 
-                desired_h = 2592    # Apple A   if height == 3456 and width == 5184:    # Apple A
-                desired_w = 1728    # Apple A   if height == 3456 and width == 5184:    # Apple A
+                desired_h = 512    # Apple A   if height == 3456 and width == 5184:    # Apple A
+                desired_w = 512    # Apple A   if height == 3456 and width == 5184:    # Apple A
 
                 for j in range(2):
                     for k in range(2):
-                        if height == 3456 and width == 5184:
-                            desired_h = 2592
-                            desired_w = 1728
-                        if height == 5184 and width == 3456:
-                            desired_h = 1728
-                            desired_w = 2592
-
                         split_img = image[j*desired_h:(j+1)*desired_h, k*desired_w:(k+1)*desired_w, :]
-
                         split_img = tf.expand_dims(split_img, 0)
-                        split_img = tf.image.resize(split_img, [FLAGS.img_size, FLAGS.img_size])
+                        # split_img = tf.image.resize(split_img, [FLAGS.img_size, FLAGS.img_size])
                         second_output = run_model(model, split_img, False)
                         output = tf.nn.softmax(second_output[0, :, :, :], -1)
                         output = tf.argmax(output, -1, output_type=tf.int32)
                         output = tf.where(output == 0, 1, 0)
-                        
-                        output = tf.image.resize(output[:, :, tf.newaxis], [desired_h, desired_w], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR).numpy()
-                        output = final_output[:, :, 0]
                         #temp_image = tf.image.resize(split_img, [1728, 1728]).numpy()
                         #temp_image = temp_image[0]
 
@@ -439,13 +423,13 @@ def main():
 
                 #final_image3 = tf.concat([final_image, final_image2], 0)
                 final_output = tf.concat([final_output, final_output2], 0)
-                batch_label = tf.cast(batch_labels[j, :, :, 0], tf.uint8).numpy()
+                batch_label = tf.cast(batch_labels[0, :, :, 0], tf.uint8).numpy()
                 batch_label = np.where(batch_label == 0, 1, 0)
                 batch_label = np.array(batch_label, np.int32)
 
                 cm_ = Measurement(predict=final_output,
-                                    label=batch_label, 
-                                    shape=[FLAGS.img_size*FLAGS.img_size, ], 
+                                    label=batch_label,
+                                    shape=[1024*1024, ],
                                     total_classes=2).MIOU()
                     
                 cm += cm_
