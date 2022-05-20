@@ -34,8 +34,8 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=64, kernel_size=3, activation="relu", name='conv2')(h)
-
     h = tf.nn.sigmoid(x) * h
+    h = tf.nn.relu(h)
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=64, kernel_size=3, activation="relu", name='conv3')(h)
     h = tf.nn.relu(x) + h
@@ -71,8 +71,8 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, activation="relu", name='conv5')(h)
-
     h = tf.nn.sigmoid(x) * h
+    h = tf.nn.relu(h)
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, activation="relu", name='conv6')(h)
     h = tf.nn.relu(x) + h
@@ -108,12 +108,14 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, activation="relu", name='conv8')(h)
-
     h = tf.nn.sigmoid(x) * h
+    h = tf.nn.relu(h)
+    
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, activation="relu", name='conv9')(h)
-
     h = tf.nn.sigmoid(x) * h
+    h = tf.nn.relu(h)
+    
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, activation="relu", name='conv10')(h)
     h = tf.nn.relu(x) + h
@@ -149,12 +151,14 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, activation="relu", name='conv12')(h)
-
     h = tf.nn.sigmoid(x) * h
+    h = tf.nn.relu(h)
+    
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, activation="relu", name='conv13')(h)
-
     h = tf.nn.sigmoid(x) * h
+    h = tf.nn.relu(h)
+    
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, activation="relu", name='conv14')(h)
     h = tf.nn.relu(x) + h
@@ -190,12 +194,14 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, activation="relu", name='conv16')(h)
-
     h = tf.nn.sigmoid(x) * h
+    h = tf.nn.relu(h)
+    
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, activation="relu", name='conv17')(h)
-
     h = tf.nn.sigmoid(x) * h
+    h = tf.nn.relu(h)
+    
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, activation="relu", name='conv18')(h)
     h = tf.nn.relu(x) + h
@@ -221,9 +227,9 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h = tf.keras.layers.Conv2DTranspose(filters=256, kernel_size=2, strides=2)(h)
     h = tf.keras.layers.BatchNormalization()(h)
+    h = tf.nn.sigmoid(x) * h
     h = tf.keras.layers.ReLU()(h)
 
-    h = tf.nn.sigmoid(x) * h
     h = tf.concat([block_4, h], -1)
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, use_bias=False)(h)
@@ -250,9 +256,9 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h = tf.keras.layers.Conv2DTranspose(filters=128, kernel_size=2, strides=2)(h)
     h = tf.keras.layers.BatchNormalization()(h)
+    h = tf.nn.sigmoid(x) * h
     h = tf.keras.layers.ReLU()(h)
 
-    h = tf.nn.sigmoid(x) * h
     h = tf.concat([block_3, h], -1)
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, use_bias=False)(h)
@@ -279,9 +285,9 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h = tf.keras.layers.Conv2DTranspose(filters=64, kernel_size=2, strides=2)(h)
     h = tf.keras.layers.BatchNormalization()(h)
+    h = tf.nn.sigmoid(x) * h
     h = tf.keras.layers.ReLU()(h)
 
-    h = tf.nn.sigmoid(x) * h
     h = tf.concat([block_2, h], -1)
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=64, kernel_size=3, use_bias=False)(h)
@@ -308,9 +314,9 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h = tf.keras.layers.Conv2DTranspose(filters=32, kernel_size=2, strides=2)(h)
     h = tf.keras.layers.BatchNormalization()(h)
+    h = tf.nn.sigmoid(x) * h
     h = tf.keras.layers.ReLU()(h)
 
-    h = tf.nn.sigmoid(x) * h
     h = tf.concat([block_1, h], -1)
     h = tf.pad(h, [[0,0],[1,1],[1,1],[0,0]], "REFLECT")
     h = tf.keras.layers.Conv2D(filters=32, kernel_size=3, use_bias=False)(h)
@@ -355,6 +361,3 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
     model.get_layer('conv4_4').set_weights(backbone.get_layer('block2_conv1').get_weights())
 
     return tf.keras.Model(inputs=inputs, outputs=output)
-
-mo = multi_region_class()
-mo.summary()
