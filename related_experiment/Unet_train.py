@@ -36,7 +36,7 @@ FLAGS = easydict.EasyDict({"img_size": 512,
                            
                            "epochs": 200,
 
-                           "total_classes": 3,
+                           "total_classes": 2,
 
                            "ignore_label": 0,
 
@@ -346,17 +346,12 @@ def main():
                                                                                                                     f1_score_,
                                                                                                                     recall_,
                                                                                                                     precision_))
-            print("=================================================================================================================================================")
-            output_text.write("test mIoU: ")
-            output_text.write("%.4f" % (miou_))
-            output_text.write(", crop_iou: ")
-            output_text.write("%.4f" % (crop_iou_))
-            output_text.write(", weed_iou: ")
-            output_text.write("%.4f" % (weed_iou_))
+            output_text.write("test IoU: ")
+            output_text.write("%.4f" % (iou))
             output_text.write(", test F1_score: ")
             output_text.write("%.4f" % (f1_score_))
             output_text.write(", test sensitivity: ")
-            output_text.write("%.4f" % (recall_))
+            output_text.write("%.4f" % (recall_ ))
             output_text.write(", test precision: ")
             output_text.write("%.4f" % (precision_))
             output_text.write("\n")
