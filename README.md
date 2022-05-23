@@ -17,3 +17,5 @@
 * model_9_fix는 코랩에 re학습중 (change focal to cross entropy)
 * train_9_fix.py sub com
 * train_9_fix2.py main com
+
+* 최종 성능 ==> test IoU: 0.6707, test F1_score: 0.8029, test sensitivity: 0.8263, test precision: 0.7808
