@@ -18,4 +18,4 @@
 * train_9_fix.py sub com
 * train_9_fix2.py main com
 
-* 최종 성능 ==> test IoU: 0.6707, test F1_score: 0.8029, test sensitivity: 0.8263, test precision: 0.7808 (코랩에서 실험한것임 기억해!!!!)
+* 최종 성능 ==> test IoU: 0.6716, test F1_score: 0.8035, test sensitivity: 0.8350, test precision: 0.7744 (코랩에서 실험한것임 기억해!!!!)train_0
