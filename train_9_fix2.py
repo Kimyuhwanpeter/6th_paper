@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
+from random import shuffle, random
+# from tree_model import *
 from model_9_fix import *
-from random import random, shuffle
 from tensorflow.keras import backend as K
 from Cal_measurement import *
 
@@ -11,21 +12,21 @@ import os
 
 FLAGS = easydict.EasyDict({"img_size": 512,
 
-                           "train_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/train_fix.txt",
+                           "train_txt_path": "/content/train_fix.txt",
 
-                           "test_txt_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/test.txt",
+                           "test_txt_path": "/content/test.txt",
                            
-                           "tr_label_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/augment_label/",
+                           "tr_label_path": "/content/augment_label/",
                            
-                           "tr_image_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/augment_train/",
+                           "tr_image_path": "/content/augment_train/",
 
-                           "te_label_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/FlowerLabels_test/",
+                           "te_label_path": "/content/FlowerLabels_test/",
                            
-                           "te_image_path": "/yuhwan/yuhwan/Dataset/Segmentation/Apple_A/Flowerimages_test/",
+                           "te_image_path": "/content/Flowerimages_test/",
                            
                            "pre_checkpoint": False,
                            
-                           "pre_checkpoint_path": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/checkpoint/29",
+                           "pre_checkpoint_path": "C:/Users/Yuhwan/Downloads/226/226",
                            
                            "lr": 0.0001,
 
@@ -37,13 +38,13 @@ FLAGS = easydict.EasyDict({"img_size": 512,
 
                            "ignore_label": 0,
 
-                           "batch_size": 3,
+                           "batch_size": 4,
 
-                           "sample_images": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/sample_images",
+                           "sample_images": "/content/drive/MyDrive/6th_paper/sample_images2",
 
-                           "save_checkpoint": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/checkpoint",
+                           "save_checkpoint": "/content/drive/MyDrive/6th_paper/checkpoint2",
 
-                           "save_print": "/yuhwan/yuhwan/checkpoint/Segmenation/6th_paper/Apple_A/train_out.txt",
+                           "save_print": "/content/drive/MyDrive/6th_paper/train_out2.txt",
 
                            "train_loss_graphs": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/V2/BoniRob/train_loss.txt",
 
@@ -97,14 +98,14 @@ def test_func(image_list, label_list):
 
     img = tf.io.read_file(image_list)
     img = tf.image.decode_jpeg(img, 3)
-    img = tf.image.resize(img, [1024, 1024])
+    img = tf.image.resize(img, [2048, 2048])
     #img = tf.clip_by_value(img, 0, 255)
     # img = img[:, :, ::-1] - tf.constant([103.939, 116.779, 123.68])
     img = img / 255.
 
     lab = tf.io.read_file(label_list)
     lab = tf.image.decode_jpeg(lab, 1)
-    lab = tf.image.resize(lab, [1024, 1024], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+    # lab = tf.image.resize(lab, [2048, 2048], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)   # 이거 해체 했을 때 성능이 좋게 나왔음
     lab = tf.image.convert_image_dtype(lab, tf.uint8)
 
     return img, lab
@@ -215,37 +216,34 @@ def cal_loss(model, images, labels, object_buf):
         second_output = run_model(model, images, True)
         
         second_output = tf.reshape(second_output, [-1, 2])
-        second_output = tf.nn.softmax(second_output, -1)
-        
         batch_labels = tf.reshape(labels, [-1,])
-        batch_labels = tf.one_hot(batch_labels, 2)
 
-        # loss_ = tf.keras.losses.CategoricalCrossentropy(from_logits=False)(batch_labels, second_output)
-        loss_ = categorical_focal_loss([object_buf[0], object_buf[1]])(batch_labels, second_output)
+        loss_ = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)(batch_labels, second_output)
+        # loss_ = categorical_focal_loss([object_buf[0], object_buf[1]])(batch_labels, second_output)
         
-        loss = loss_
+        # loss = loss_
         
-        # this part need to fix
-        background_labels = batch_labels[:, 0]
-        background_logits = second_output[:, 0]
+        # # this part need to fix
+        # background_labels = batch_labels[:, 0]
+        # background_logits = second_output[:, 0]
         
-        object_labels = batch_labels[:, 1]
-        object_logits = second_output[:, 1]
+        # object_labels = batch_labels[:, 1]
+        # object_logits = second_output[:, 1]
         
-        background_loss_ = false_dice_loss(background_labels, 1 - background_logits) \
-            + tf.keras.losses.BinaryCrossentropy(from_logits=False)(background_labels, background_logits)
-        object_loss_ = true_dice_loss(object_labels, object_logits) \
-            + tf.keras.losses.BinaryCrossentropy(from_logits=False)(object_labels, object_logits)
+        # background_loss_ = true_dice_loss(background_labels, background_logits)
+        #     # + tf.keras.losses.BinaryCrossentropy(from_logits=False)(background_labels, background_logits)
+        # object_loss_ = true_dice_loss(object_labels, object_logits)
+        #     # + tf.keras.losses.BinaryCrossentropy(from_logits=False)(object_labels, object_logits)
        
-        background_loss = background_loss_
-        object_loss = object_loss_
+        # background_loss = background_loss_
+        # object_loss = object_loss_
         
-        total_loss = loss + background_loss + object_loss
+        # total_loss = loss + background_loss + object_loss
 
-    grads = tape.gradient(total_loss, model.trainable_variables)
+    grads = tape.gradient(loss_, model.trainable_variables)
     optim.apply_gradients(zip(grads, model.trainable_variables))
 
-    return total_loss
+    return loss_
 
 def main():
 
@@ -384,24 +382,25 @@ def main():
             f1_score_ = 0.
             recall_ = 0.
             precision_ = 0.
+            model_ = multi_region_class(input_shape=(FLAGS.img_size*2, FLAGS.img_size*2, 3), nclasses=2)
+            model_.set_weights(model.get_weights())
             for i in range(len(test_img_dataset)):
                 batch_images, batch_labels = next(test_iter)
                 batch_labels = tf.where(batch_labels > 128, 1, 0).numpy()
 
                 image = batch_images[0].numpy()
-                shape = tf.keras.backend.int_shape(image)
-                height = shape[0]
-                width = shape[1]
+                # shape = tf.keras.backend.int_shape(batch_labels[0].numpy())
+                height = batch_labels.shape[1]
+                width = batch_labels.shape[2]
 
-                desired_h = 512    # Apple A   if height == 3456 and width == 5184:    # Apple A
-                desired_w = 512    # Apple A   if height == 3456 and width == 5184:    # Apple A
-
+                desired_h = 1024    # Apple A   if height == 3456 and width == 5184:    # Apple A
+                desired_w = 1024    # Apple A   if height == 3456 and width == 5184:    # Apple A
                 for j in range(2):
                     for k in range(2):
                         split_img = image[j*desired_h:(j+1)*desired_h, k*desired_w:(k+1)*desired_w, :]
                         split_img = tf.expand_dims(split_img, 0)
                         # split_img = tf.image.resize(split_img, [FLAGS.img_size, FLAGS.img_size])
-                        second_output = run_model(model, split_img, False)
+                        second_output = run_model(model_, split_img, False)
                         output = tf.nn.softmax(second_output[0, :, :, :], -1)
                         output = tf.argmax(output, -1, output_type=tf.int32)
                         output = tf.where(output == 0, 1, 0)
@@ -425,13 +424,16 @@ def main():
 
                 #final_image3 = tf.concat([final_image, final_image2], 0)
                 final_output = tf.concat([final_output, final_output2], 0)
+                final_output = tf.expand_dims(final_output, -1)
+                final_output = tf.image.resize(final_output, [height, width], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+                final_output = final_output[:, :, 0]
                 batch_label = tf.cast(batch_labels[0, :, :, 0], tf.uint8).numpy()
                 batch_label = np.where(batch_label == 0, 1, 0)
                 batch_label = np.array(batch_label, np.int32)
 
                 cm_ = Measurement(predict=final_output,
                                     label=batch_label,
-                                    shape=[1024*1024, ],
+                                    shape=[height*width, ],
                                     total_classes=2).MIOU()
                     
                 cm += cm_
