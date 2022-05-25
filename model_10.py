@@ -1,4 +1,6 @@
 # -*- coding:utf-8 -*-
+from keras_flops import get_flops
+from model_profiler import model_profiler
 import tensorflow as tf
 
 def residual_conv_block1(input, filters, skip=True):
@@ -109,9 +111,13 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
     h4 = h[:, 128:, 128:, :]
 
     h1 = tf.keras.layers.Conv2D(filters=128, kernel_size=3, name='conv2_1', padding="same", use_bias=True)(h1)
+    block2_h1 = h1
     h2 = tf.keras.layers.Conv2D(filters=128, kernel_size=3, name='conv2_2', padding="same", use_bias=True)(h2) 
+    block2_h2 = h2
     h3 = tf.keras.layers.Conv2D(filters=128, kernel_size=3, name='conv2_3', padding="same", use_bias=True)(h3)
+    block2_h3 = h3
     h4 = tf.keras.layers.Conv2D(filters=128, kernel_size=3, name='conv2_4', padding="same", use_bias=True)(h4)
+    block2_h4 = h4
 
     h1h2 = tf.concat([h1, h2], 2)
     h3h4 = tf.concat([h3, h4], 2)
@@ -132,9 +138,13 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
     h4 = h[:, 64:, 64:, :]
 
     h1 = tf.keras.layers.Conv2D(filters=256, kernel_size=3, groups=32, name='conv3_1', padding="same", use_bias=True)(h1)
+    block3_h1 = h1
     h2 = tf.keras.layers.Conv2D(filters=256, kernel_size=3, groups=32, name='conv3_2', padding="same", use_bias=True)(h2) 
+    block3_h2 = h2
     h3 = tf.keras.layers.Conv2D(filters=256, kernel_size=3, groups=32, name='conv3_3', padding="same", use_bias=True)(h3)
+    block3_h3 = h3
     h4 = tf.keras.layers.Conv2D(filters=256, kernel_size=3, groups=32, name='conv3_4', padding="same", use_bias=True)(h4)
+    block3_h4 = h4
 
     h1h2 = tf.concat([h1, h2], 2)
     h3h4 = tf.concat([h3, h4], 2)
@@ -156,9 +166,13 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
     h4 = h[:, 32:, 32:, :]
 
     h1 = tf.keras.layers.Conv2D(filters=512, kernel_size=3, groups=32, name='conv4_1', padding="same", use_bias=True)(h1)
+    block4_h1 = h1
     h2 = tf.keras.layers.Conv2D(filters=512, kernel_size=3, groups=32, name='conv4_2', padding="same", use_bias=True)(h2) 
+    block4_h2 = h2
     h3 = tf.keras.layers.Conv2D(filters=512, kernel_size=3, groups=32, name='conv4_3', padding="same", use_bias=True)(h3)
+    block4_h3 = h3
     h4 = tf.keras.layers.Conv2D(filters=512, kernel_size=3, groups=32, name='conv4_4', padding="same", use_bias=True)(h4)
+    block4_h4 = h4
 
     h1h2 = tf.concat([h1, h2], 2)
     h3h4 = tf.concat([h3, h4], 2)
@@ -180,9 +194,13 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
     h4 = h[:, 16:, 16:, :]
 
     h1 = tf.keras.layers.Conv2D(filters=512, kernel_size=3, groups=32, name='conv5_1', padding="same", use_bias=True)(h1)
+    block5_h1 = h1
     h2 = tf.keras.layers.Conv2D(filters=512, kernel_size=3, groups=32, name='conv5_2', padding="same", use_bias=True)(h2) 
+    block5_h2 = h2
     h3 = tf.keras.layers.Conv2D(filters=512, kernel_size=3, groups=32, name='conv5_3', padding="same", use_bias=True)(h3)
+    block5_h3 = h3
     h4 = tf.keras.layers.Conv2D(filters=512, kernel_size=3, groups=32, name='conv5_4', padding="same", use_bias=True)(h4)
+    block5_h4 = h4
 
     h1h2 = tf.concat([h1, h2], 2)
     h3h4 = tf.concat([h3, h4], 2)
@@ -213,12 +231,16 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
     h4 = h[:, 8:, 8:, :]
     h1 = tf.keras.layers.Conv2DTranspose(filters=256, kernel_size=2, strides=2, groups=32, use_bias=False)(h1)
     h1 = tf.keras.layers.BatchNormalization()(h1)
+    h1 = tf.concat([h1, block5_h1], -1)
     h2 = tf.keras.layers.Conv2DTranspose(filters=256, kernel_size=2, strides=2, groups=32, use_bias=False)(h2)
     h2 = tf.keras.layers.BatchNormalization()(h2)
+    h2 = tf.concat([h2, block5_h2], -1)
     h3 = tf.keras.layers.Conv2DTranspose(filters=256, kernel_size=2, strides=2, groups=32, use_bias=False)(h3)
     h3 = tf.keras.layers.BatchNormalization()(h3)
+    h3 = tf.concat([h3, block5_h3], -1)
     h4 = tf.keras.layers.Conv2DTranspose(filters=256, kernel_size=2, strides=2, groups=32, use_bias=False)(h4)
     h4 = tf.keras.layers.BatchNormalization()(h4)
+    h4 = tf.concat([h4, block5_h4], -1)
 
     h1h2 = tf.concat([h1, h2], 2)
     h3h4 = tf.concat([h3, h4], 2)
@@ -247,12 +269,16 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h1 = tf.keras.layers.Conv2DTranspose(filters=128, kernel_size=2, strides=2, use_bias=False)(h1)
     h1 = tf.keras.layers.BatchNormalization()(h1)
+    h1 = tf.concat([h1, block4_h1], -1)
     h2 = tf.keras.layers.Conv2DTranspose(filters=128, kernel_size=2, strides=2, use_bias=False)(h2)
     h2 = tf.keras.layers.BatchNormalization()(h2)
+    h2 = tf.concat([h2, block4_h2], -1)
     h3 = tf.keras.layers.Conv2DTranspose(filters=128, kernel_size=2, strides=2, use_bias=False)(h3)
     h3 = tf.keras.layers.BatchNormalization()(h3)
+    h3 = tf.concat([h3, block4_h3], -1)
     h4 = tf.keras.layers.Conv2DTranspose(filters=128, kernel_size=2, strides=2, use_bias=False)(h4)
     h4 = tf.keras.layers.BatchNormalization()(h4)
+    h4 = tf.concat([h4, block4_h4], -1)
 
     h1h2 = tf.concat([h1, h2], 2)
     h3h4 = tf.concat([h3, h4], 2)
@@ -281,12 +307,16 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h1 = tf.keras.layers.Conv2DTranspose(filters=64, kernel_size=2, strides=2, use_bias=False)(h1)
     h1 = tf.keras.layers.BatchNormalization()(h1)
+    h1 = tf.concat([h1, block3_h1], -1)
     h2 = tf.keras.layers.Conv2DTranspose(filters=64, kernel_size=2, strides=2, use_bias=False)(h2)
     h2 = tf.keras.layers.BatchNormalization()(h2)
+    h2 = tf.concat([h2, block3_h2], -1)
     h3 = tf.keras.layers.Conv2DTranspose(filters=64, kernel_size=2, strides=2, use_bias=False)(h3)
     h3 = tf.keras.layers.BatchNormalization()(h3)
+    h3 = tf.concat([h3, block3_h3], -1)
     h4 = tf.keras.layers.Conv2DTranspose(filters=64, kernel_size=2, strides=2, use_bias=False)(h4)
     h4 = tf.keras.layers.BatchNormalization()(h4)
+    h4 = tf.concat([h4, block3_h4], -1)
 
     h1h2 = tf.concat([h1, h2], 2)
     h3h4 = tf.concat([h3, h4], 2)
@@ -315,12 +345,16 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
 
     h1 = tf.keras.layers.Conv2DTranspose(filters=32, kernel_size=2, strides=2, use_bias=False)(h1)
     h1 = tf.keras.layers.BatchNormalization()(h1)
+    h1 = tf.concat([h1, block2_h1], -1)
     h2 = tf.keras.layers.Conv2DTranspose(filters=32, kernel_size=2, strides=2, use_bias=False)(h2)
     h2 = tf.keras.layers.BatchNormalization()(h2)
+    h2 = tf.concat([h2, block2_h2], -1)
     h3 = tf.keras.layers.Conv2DTranspose(filters=32, kernel_size=2, strides=2, use_bias=False)(h3)
     h3 = tf.keras.layers.BatchNormalization()(h3)
+    h3 = tf.concat([h3, block2_h3], -1)
     h4 = tf.keras.layers.Conv2DTranspose(filters=32, kernel_size=2, strides=2, use_bias=False)(h4)
     h4 = tf.keras.layers.BatchNormalization()(h4)
+    h4 = tf.concat([h4, block2_h4], -1)
 
     h1h2 = tf.concat([h1, h2], 2)
     h3h4 = tf.concat([h3, h4], 2)
@@ -427,3 +461,8 @@ def multi_region_class(input_shape=(512, 512, 3), nclasses=2):
     # model.get_layer("conv5_4").set_weights(backbone.get_layer("block5_conv1").get_weights())
 
     return model
+
+# mo = multi_region_class()
+# mo.summary()
+# model_pro = model_profiler(mo, 2)
+# print(model_pro)
