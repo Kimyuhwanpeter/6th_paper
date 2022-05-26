@@ -80,6 +80,16 @@ def multi_scale_network(input_shape=(512, 512, 3), nclasses=2):
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
 
+    h = tf.keras.layers.Conv2DTranspose(filters=16, kernel_size=2, strides=2, use_bias=False)(h)
+    h = tf.keras.layers.BatchNormalization()(h)
+    h = tf.keras.layers.ReLU()(h)
+    h = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.BatchNormalization()(h)
+    h = tf.keras.layers.ReLU()(h)
+    h = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.BatchNormalization()(h)
+    h = tf.keras.layers.ReLU()(h)
+
     h = tf.keras.layers.Conv2D(filters=nclasses, kernel_size=1)(h)
 
     model = tf.keras.Model(inputs=model.input, outputs=h)
@@ -88,5 +98,5 @@ def multi_scale_network(input_shape=(512, 512, 3), nclasses=2):
 
 mo = multi_scale_network()
 mo.summary()
-profiler = model_profiler(mo, 16)
+profiler = model_profiler(mo, 12)
 print(profiler)
