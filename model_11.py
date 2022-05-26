@@ -55,54 +55,54 @@ def modified_seg_model(input_shape=(512, 512, 3), nclasses=2):
     h = inputs = tf.keras.Input(input_shape)
 
     # encoder 1
-    h = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding="same", use_bias=True, name="conv1")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding="same", use_bias=True, name="conv2")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, strides=2, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, strides=2, padding="same", use_bias=True, name="conv3")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
 
     # encoder 2
-    h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding="same", use_bias=True, name="conv4")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding="same", use_bias=True, name="conv5")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, strides=2, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, strides=2, padding="same", use_bias=True, name="conv6")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
 
     # encoder 3
-    h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, padding="same", use_bias=True, name="conv7")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, padding="same", use_bias=True, name="conv8")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, padding="same", use_bias=True, name="conv9")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, strides=2, padding="same", use_bias=False, groups=2)(h)
+    h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, strides=2, padding="same", use_bias=True, groups=2, name="conv10")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
     non_ob_low_level_features = h[:, :, :, 0:256]
     ob_low_level_features = h[:, :, :, 256:]
 
     # encoder 4
-    h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, padding="same", use_bias=True, name="conv11")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, padding="same", use_bias=True, name="conv12")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, padding="same", use_bias=False)(h)
+    h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, padding="same", use_bias=True, name="conv13")(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, strides=2, padding="same", use_bias=False, groups=2)(h)
+    h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, strides=2, padding="same", use_bias=True, groups=2)(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
 
@@ -138,10 +138,7 @@ def modified_seg_model(input_shape=(512, 512, 3), nclasses=2):
     o_h = tf.keras.layers.ReLU()(o_h)
     o_h = Upsample(o_h, size=[input_shape[0], input_shape[1]])
     o_h = tf.keras.layers.Conv2D(filters=1, kernel_size=1)(o_h)
-
-    # 마지막 최종 output에 대해서는 loss 및 테스트로 매꿔????
-
-
+  
     ## encoder 5
     #h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, padding="same", use_bias=False)(h)
     #h = tf.keras.layers.BatchNormalization()(h)
@@ -158,12 +155,26 @@ def modified_seg_model(input_shape=(512, 512, 3), nclasses=2):
 
     # decoder 1
     
-
     model = tf.keras.Model(inputs=inputs, outputs=[b_h, o_h])
+    backbone = tf.keras.applications.VGG16(input_shape=(224, 224, 3))
+
+    model.get_layer("conv1").set_weights(backbone.get_layer("block1_conv1").get_weights())
+    model.get_layer("conv2").set_weights(backbone.get_layer("block1_conv2").get_weights())
+    model.get_layer("conv3").set_weights(backbone.get_layer("block2_conv1").get_weights())
+    model.get_layer("conv4").set_weights(backbone.get_layer("block2_conv2").get_weights())
+    model.get_layer("conv5").set_weights(backbone.get_layer("block2_conv2").get_weights())
+    model.get_layer("conv6").set_weights(backbone.get_layer("block3_conv1").get_weights())
+    model.get_layer("conv7").set_weights(backbone.get_layer("block3_conv2").get_weights())
+    model.get_layer("conv8").set_weights(backbone.get_layer("block3_conv3").get_weights())
+    model.get_layer("conv9").set_weights(backbone.get_layer("block3_conv3").get_weights())
+    #model.get_layer("conv10").set_weights(backbone.get_layer("block4_conv1").get_weights())
+    model.get_layer("conv11").set_weights(backbone.get_layer("block4_conv2").get_weights())
+    model.get_layer("conv12").set_weights(backbone.get_layer("block4_conv3").get_weights())
+    model.get_layer("conv13").set_weights(backbone.get_layer("block4_conv3").get_weights())
 
     return model
 
-#mo = modified_seg_model(input_shape=(512, 512, 3))
-#model_pro = model_profiler(mo, 4)
-#mo.summary()
-#print(model_pro)
+mo = modified_seg_model(input_shape=(512, 512, 3))
+model_pro = model_profiler(mo, 4)
+mo.summary()
+print(model_pro)
