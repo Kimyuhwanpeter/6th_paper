@@ -116,7 +116,6 @@ def multi_scale_network(input_shape=(512, 512, 3), nclasses=1):
     h_1 = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding="same")(h_1)
     h_1 = tf.keras.layers.BatchNormalization()(h_1)
     h_1 = tf.keras.layers.ReLU()(h_1)
-    h_1 = tf.keras.layers.Conv2D(filters=nclasses, kernel_size=1)(h_1)
 
     h_2 = tf.keras.layers.Conv2DTranspose(filters=32, kernel_size=2, strides=2, padding="same", use_bias=False)(h_2)
     h_2 = tf.keras.layers.BatchNormalization()(h_2)
@@ -124,7 +123,13 @@ def multi_scale_network(input_shape=(512, 512, 3), nclasses=1):
     h_2 = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding="same")(h_2)
     h_2 = tf.keras.layers.BatchNormalization()(h_2)
     h_2 = tf.keras.layers.ReLU()(h_2)
-    h_2 = tf.keras.layers.Conv2D(filters=nclasses, kernel_size=1)(h_2)
+
+    h = tf.concat([h_1, h_2], -1)
+    h = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding="same", use_bias=False, groups=2)(h)
+    h = tf.keras.layers.BatchNormalization()(h)
+    h = tf.keras.layers.ReLU()(h)
+
+    h = tf.keras.layers.Conv2D(filters=nclasses, kernel_size=1)(h)
 
     #h_1 = tf.image.resize(h_1, [input_shape[0], input_shape[1]])
     #h_1 = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding="same", use_bias=False)(h_1)
@@ -141,7 +146,7 @@ def multi_scale_network(input_shape=(512, 512, 3), nclasses=1):
     # background (h_1)에 대해 dice를 하고, h_1에 sigmoid를 한 후 1을 뺴준뒤 h_2에 곱해주어 최종 h_2에 대한 loss 및 테스틀 진행
     # 이거 꼭 기억해!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     # 오늘 집가서 꼭 돌려봐!!
-    return tf.keras.Model(inputs=model.input, outputs=[h_1, h_2])
+    return tf.keras.Model(inputs=model.input, outputs=h)
 
 mo = multi_scale_network()
 pro = model_profiler(mo, 5)
