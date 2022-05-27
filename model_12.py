@@ -16,7 +16,7 @@ def multi_scale_network(input_shape=(512, 512, 3), nclasses=2):
     temp_h = tf.keras.layers.Conv2D(filters=512, kernel_size=1, use_bias=False)(h)
     temp_h = tf.keras.layers.BatchNormalization()(temp_h)
     temp_h = tf.nn.sigmoid(temp_h)
-    temp_h = tf.image.resize(temp_h, [32, 32]) * block_4
+    temp_h = tf.image.resize(temp_h, [input_shape[0] // 16, input_shape[1] // 16]) * block_4
     h = tf.keras.layers.Conv2D(filters=512, kernel_size=3, padding="same", use_bias=False)(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)   # [16, 16, 512]
@@ -31,14 +31,11 @@ def multi_scale_network(input_shape=(512, 512, 3), nclasses=2):
     h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, padding="same", use_bias=False)(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=256, kernel_size=3, padding="same", use_bias=False)(h)
-    h = tf.keras.layers.BatchNormalization()(h)
-    h = tf.keras.layers.ReLU()(h)
 
     temp_h = tf.keras.layers.Conv2D(filters=512, kernel_size=1, use_bias=False)(block_4)
     temp_h = tf.keras.layers.BatchNormalization()(temp_h)
     temp_h = tf.nn.sigmoid(temp_h)
-    temp_h = tf.image.resize(temp_h, [64, 64]) * block_3
+    temp_h = tf.image.resize(temp_h, [input_shape[0] // 8, input_shape[1] // 8]) * block_3
     h = tf.keras.layers.Conv2DTranspose(filters=128, kernel_size=2, strides=2, use_bias=False)(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
@@ -46,14 +43,11 @@ def multi_scale_network(input_shape=(512, 512, 3), nclasses=2):
     h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding="same", use_bias=False)(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=128, kernel_size=3, padding="same", use_bias=False)(h)
-    h = tf.keras.layers.BatchNormalization()(h)
-    h = tf.keras.layers.ReLU()(h)
 
     temp_h = tf.keras.layers.Conv2D(filters=256, kernel_size=1, use_bias=False)(block_3)
     temp_h = tf.keras.layers.BatchNormalization()(temp_h)
     temp_h = tf.nn.sigmoid(temp_h)
-    temp_h = tf.image.resize(temp_h, [128, 128]) * block_2
+    temp_h = tf.image.resize(temp_h, [input_shape[0] // 4, input_shape[1] // 4]) * block_2
     h = tf.keras.layers.Conv2DTranspose(filters=64, kernel_size=2, strides=2, use_bias=False)(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
@@ -61,29 +55,19 @@ def multi_scale_network(input_shape=(512, 512, 3), nclasses=2):
     h = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding="same", use_bias=False)(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding="same", use_bias=False)(h)
-    h = tf.keras.layers.BatchNormalization()(h)
-    h = tf.keras.layers.ReLU()(h)
 
     temp_h = tf.keras.layers.Conv2D(filters=128, kernel_size=1, use_bias=False)(block_2)
     temp_h = tf.keras.layers.BatchNormalization()(temp_h)
     temp_h = tf.nn.sigmoid(temp_h)
-    temp_h = tf.image.resize(temp_h, [256, 256]) * block_1
+    temp_h = tf.image.resize(temp_h, [input_shape[0] // 2, input_shape[1] // 2]) * block_1
     h = tf.keras.layers.Conv2DTranspose(filters=32, kernel_size=2, strides=2, use_bias=False)(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
     h = tf.concat([h, temp_h], -1)
     h = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding="same", use_bias=False)(h)
     h = tf.keras.layers.BatchNormalization()(h)
-    h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding="same", use_bias=False)(h)
-    h = tf.keras.layers.BatchNormalization()(h)
-    h = tf.keras.layers.ReLU()(h)
 
     h = tf.keras.layers.Conv2DTranspose(filters=16, kernel_size=2, strides=2, use_bias=False)(h)
-    h = tf.keras.layers.BatchNormalization()(h)
-    h = tf.keras.layers.ReLU()(h)
-    h = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding="same", use_bias=False)(h)
     h = tf.keras.layers.BatchNormalization()(h)
     h = tf.keras.layers.ReLU()(h)
     h = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding="same", use_bias=False)(h)
@@ -96,7 +80,7 @@ def multi_scale_network(input_shape=(512, 512, 3), nclasses=2):
 
     return model
 
-mo = multi_scale_network()
-mo.summary()
-profiler = model_profiler(mo, 12)
-print(profiler)
+# mo = multi_scale_network(input_shape=(896, 896, 3))
+# mo.summary()
+# profiler = model_profiler(mo, 5)
+# print(profiler)
