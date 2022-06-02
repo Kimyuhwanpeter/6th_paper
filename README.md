@@ -27,3 +27,4 @@
 
 * model_14 는 Unet++에 selective attention 기법을 설계하고 decoder의 connection을 추가한 모델임
 * 이거 내일이나 내일모레 꼭 실험해보기 (flower dataset으로, 그리고 1bit 이미지 --> 8bit 이미지로 다시 만들어!! 기억해!!!!!!!)
+* **model_14.py 성능 향상 기대, model_15.py Unet3+ 에서 selective attention (내가 설계한것) 을 decoder단에 각각 추가하여 응용하였음 (내일 리뷰논문 완성하고 바로 loss 및 train code 작성하기)**
